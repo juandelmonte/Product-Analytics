@@ -1,0 +1,16 @@
+# Evidence direct connector to ClickHouse (self-hosted).
+#
+# Uses a dedicated read-only `evidence` user (created by the stack init script:
+# scripts/activate.ps1 or Makefile) rather than the empty-password `default`
+# user. Evidence requires a non-empty password (or access token).
+#
+# These are local demo credentials (see .env) — no real secrets.
+type: clickhouse
+host: clickhouse
+port: 8123
+secure: false
+username: evidence
+password: evidence
+database: marts
+databases:
+  - marts

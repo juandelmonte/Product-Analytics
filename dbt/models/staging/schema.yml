@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_product_events
+    description: Deduplicated product events with common properties flattened.
+    columns:
+      - name: event_id
+        description: Stable dedup key (unique after dedup).
+        tests: [unique, not_null]
+      - name: event_name
+        tests: [not_null]
+      - name: distinct_id
+        tests: [not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: event_at
+        tests: [not_null]
+
+  - name: stg_crm_contacts
+    description: CRM contacts (merge-disposed).
+    columns:
+      - name: contact_id
+        tests: [unique, not_null]
+      - name: email
+        tests: [not_null]
+
+  - name: stg_crm_companies
+    description: CRM companies with standardised country.
+    columns:
+      - name: company_id
+        tests: [unique, not_null]
+      - name: country
+        tests: [not_null]
+
+  - name: stg_crm_deals
+    description: CRM deals.
+    columns:
+      - name: deal_id
+        tests: [unique, not_null]
+      - name: company_id
+        tests: [not_null]
+
+  - name: stg_billing_customers
+    description: Billing customers.
+    columns:
+      - name: customer_id
+        tests: [unique, not_null]
+
+  - name: stg_billing_prices
+    description: Billing prices with schema-evolution coalesced plan_code.
+    columns:
+      - name: price_id
+        tests: [unique, not_null]
+      - name: plan_code
+        tests: [not_null]
+
+  - name: stg_billing_subscriptions
+    description: Billing subscriptions (append-only history).
+    columns:
+      - name: subscription_id
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
+
+  - name: stg_billing_invoices
+    description: Billing invoices.
+    columns:
+      - name: invoice_id
+        tests: [unique, not_null]

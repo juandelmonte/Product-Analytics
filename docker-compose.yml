@@ -1,0 +1,253 @@
+name: saas-analytics
+
+# ---------------------------------------------------------------------------
+# SaaS Product Analytics Platform — Docker Compose
+#
+# Services:
+#   - postgres   : operational source-of-truth (the simulated SaaS database)
+#   - api        : FastAPI source-system-like APIs + simulation module
+#   - clickhouse : OLAP analytical warehouse (bronze/staging/core/marts)
+#   - dbt        : dbt + ClickHouse adapter (transformation + testing)
+#   - dlt        : ingestion service (historical + incremental pipelines)
+#
+# Airflow is added in a later phase under its own `orchestration` profile.
+#
+# dbt and dlt connect to ClickHouse over HTTP on port 8123. The api service
+# connects to Postgres on port 5432 (internal network).
+# ---------------------------------------------------------------------------
+
+x-common-env: &common-env
+  TZ: UTC
+
+services:
+  # -------------------------------------------------------------------------
+  # PostgreSQL — operational state (the simulated SaaS source-of-truth)
+  # -------------------------------------------------------------------------
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-16}
+    environment:
+      <<: *common-env
+      POSTGRES_USER: ${POSTGRES_USER:-saas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas}
+      POSTGRES_DB: ${POSTGRES_DB:-saas}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas} -d ${POSTGRES_DB:-saas}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # -------------------------------------------------------------------------
+  # FastAPI — source-system-like APIs + simulation CLI
+  # -------------------------------------------------------------------------
+  api:
+    build:
+      context: ./docker/api
+    image: saas/source-api:0.1
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas}@postgres:5432/${POSTGRES_DB:-saas}
+      SEED: ${SEED:-42}
+    volumes:
+      - ./api:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # -------------------------------------------------------------------------
+  # ClickHouse — OLAP analytical warehouse
+  # -------------------------------------------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.3}
+    environment:
+      <<: *common-env
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ports:
+      # HTTP interface (dbt, dlt, clickhouse-client --host, browser playground)
+      - "8123:8123"
+      # Native TCP protocol
+      - "9000:9000"
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # -------------------------------------------------------------------------
+  # dbt — transformation + testing (entrypoint is `dbt`)
+  # -------------------------------------------------------------------------
+  dbt:
+    build:
+      context: ./docker/dbt
+      args:
+        DBT_CLICKHOUSE_VERSION: ${DBT_CLICKHOUSE_VERSION:-1.10.2}
+        DBT_CORE_VERSION: ${DBT_CORE_VERSION:-1.10.23}
+    image: saas/dbt-clickhouse:${DBT_CLICKHOUSE_VERSION:-1.10.2}
+    environment:
+      <<: *common-env
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+    volumes:
+      - ./dbt:/app
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    working_dir: /app
+    command: ["build"]
+
+  # -------------------------------------------------------------------------
+  # dlt — ingestion pipelines (run on demand; no long-running process)
+  # -------------------------------------------------------------------------
+  dlt:
+    build:
+      context: ./docker/dlt
+    image: saas/dlt:0.1
+    environment:
+      <<: *common-env
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      # dlt native client uses the TCP port + no TLS on the local dev stack
+      CLICKHOUSE_NATIVE_PORT: "9000"
+      CLICKHOUSE_SECURE: "0"
+      DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE: ${BRONZE_DB:-bronze}
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ./dlt:/app
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      api:
+        condition: service_started
+    working_dir: /app
+
+  # -------------------------------------------------------------------------
+  # Evidence — curated business report over the dbt marts
+  # -------------------------------------------------------------------------
+  evidence:
+    build:
+      context: ./evidence
+      dockerfile: ../docker/evidence/Dockerfile
+    image: saas/evidence:0.1
+    environment:
+      <<: *common-env
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      # Dedicated read-only user for Evidence (see scripts/activate.ps1).
+      EVIDENCE_CLICKHOUSE_USER: ${EVIDENCE_CLICKHOUSE_USER:-evidence}
+      EVIDENCE_CLICKHOUSE_PASSWORD: ${EVIDENCE_CLICKHOUSE_PASSWORD:-evidence}
+      # Self-hosted Evidence requires Basic Auth unless auth is disabled.
+      EVIDENCE_AUTH_DISABLED: "true"
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  # -------------------------------------------------------------------------
+  # Airflow — orchestration (profile: `orchestration`)
+  # -------------------------------------------------------------------------
+  airflow-postgres:
+    image: postgres:16
+    profiles: ["orchestration"]
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  airflow-webserver:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    profiles: ["orchestration"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__WEBSERVER__SECRET_KEY: "dev-secret-not-for-prod"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+    ports:
+      - "8081:8080"
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    command: ["webserver"]
+
+  airflow-scheduler:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    profiles: ["orchestration"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    command: ["scheduler"]
+
+  airflow-init:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    profiles: ["orchestration"]
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    command: ["db", "migrate"]
+
+volumes:
+  postgres-data:
+  clickhouse-data:
+  airflow-postgres-data:

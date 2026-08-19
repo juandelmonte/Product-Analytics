@@ -1,0 +1,4 @@
+# Python dependencies for the dlt ingestion service.
+# Floors for now; tightened to exact pins in the hardening phase.
+dlt[clickhouse]>=1.5
+requests>=2.31

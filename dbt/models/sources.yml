@@ -1,0 +1,15 @@
+version: 2
+
+sources:
+  - name: bronze
+    description: Raw source-aligned data loaded by dlt into the ClickHouse `bronze` database.
+    database: bronze
+    tables:
+      - name: product_events
+      - name: crm_contacts
+      - name: crm_companies
+      - name: crm_deals
+      - name: billing_customers
+      - name: billing_prices
+      - name: billing_subscriptions
+      - name: billing_invoices

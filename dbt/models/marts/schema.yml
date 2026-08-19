@@ -1,0 +1,136 @@
+version: 2
+
+models:
+  - name: dim_accounts
+    description: Conformed account dimension (SCD-current). Joinable via account_id.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: company_id
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
+
+  - name: dim_plans
+    description: Plan dimension (billing price catalogue, canonicalised).
+    columns:
+      - name: price_id
+        tests: [unique, not_null]
+      - name: plan_code
+        tests: [not_null]
+
+  - name: dim_features
+    description: Feature dimension (canonical feature codes + labels).
+    columns:
+      - name: feature_code
+        tests: [unique, not_null]
+
+  - name: dim_dates
+    description: Date dimension (calendar spine).
+    columns:
+      - name: day_date
+        tests: [unique, not_null]
+
+  - name: fct_product_events
+    description: Business-ready product events joined to canonical identity.
+    columns:
+      - name: event_id
+        tests: [unique, not_null]
+      - name: account_id
+        tests: [not_null]
+      - name: event_at
+        tests: [not_null]
+
+  - name: fct_user_activation
+    description: Per-account activation fact with cohort keys.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: is_activated
+        tests: [not_null]
+
+  - name: fct_user_daily_activity
+    description: Daily user activity (DAU).
+    columns:
+      - name: user_id
+        tests: [not_null]
+      - name: activity_date
+        tests: [not_null]
+
+  - name: fct_feature_adoption
+    description: Weekly feature adoption rates.
+    columns:
+      - name: feature_code
+        tests: [not_null]
+      - name: week
+        tests: [not_null]
+      - name: adoption_rate
+        tests: [not_null]
+
+  - name: fct_user_journey
+    description: Per-account canonical journey (signup → task completed).
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+
+  - name: fct_subscription_history
+    description: Subscription history with effective dates (fact; plan attrs in dim_plans).
+    columns:
+      - name: subscription_id
+        tests: [not_null]
+      - name: effective_at
+        tests: [not_null]
+
+  - name: fct_account_mrr
+    description: Monthly recurring revenue per account.
+    columns:
+      - name: account_id
+        tests: [not_null]
+      - name: mrr_month
+        tests: [not_null]
+      - name: mrr
+        tests: [not_null]
+
+  - name: fct_paid_conversion
+    description: Paid conversion flag per account.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+
+  - name: fct_retention
+    description: Weekly retention by signup cohort.
+    columns:
+      - name: cohort_week
+        tests: [not_null]
+      - name: week_offset
+        tests: [not_null]
+      - name: retention_rate
+        tests: [not_null]
+
+  - name: fct_churn
+    description: Monthly churn.
+    columns:
+      - name: month
+        tests: [not_null]
+      - name: churn_rate
+        tests: [not_null]
+
+  - name: fct_usage_expansion
+    description: Usage ↔ MRR ↔ expansion linkage per account/month.
+    columns:
+      - name: account_id
+        tests: [not_null]
+      - name: month
+        tests: [not_null]
+
+  - name: fct_paid_base_daily
+    description: Daily evolution of the paid base (converted / churned / net paid).
+    columns:
+      - name: day_date
+        tests: [unique, not_null]
+      - name: cum_converted
+        tests: [not_null]
+      - name: cum_churned
+        tests: [not_null]
+      - name: paid_accounts
+        tests: [not_null]
