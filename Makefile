@@ -25,7 +25,7 @@ test: ## Run data tests only
 compile: ## Compile models without executing
 	docker compose run --rm dbt compile
 
-docs: ## Generate docs and serve them at http://localhost:8080
+docs: ## Generate docs and serve them at http://localhost:8083
 	docker compose run --rm dbt docs generate
 	docker compose run --rm --service-ports dbt docs serve --port 8080 --host 0.0.0.0
 
@@ -83,13 +83,13 @@ backfill: ## Re-ingest from a watermark and rebuild (corrects late data)
 # --- Orchestration ---------------------------------------------------------
 
 airflow-init: ## Initialise the Airflow metadata database
-	docker compose --profile orchestration run --rm airflow-init
+	docker compose run --rm airflow-init
 
-airflow-up: ## Start Airflow scheduler + webserver
-	docker compose --profile orchestration up -d airflow-scheduler airflow-webserver
+airflow-up: ## Start Airflow scheduler + webserver (runs with `up` by default)
+	docker compose up -d airflow-scheduler airflow-webserver
 
 airflow-down: ## Stop Airflow services
-	docker compose --profile orchestration down
+	docker compose stop airflow-scheduler airflow-webserver airflow-postgres
 
 bi-up: ## Start the Evidence business report (http://localhost:3000)
 	docker compose up -d evidence

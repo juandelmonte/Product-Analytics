@@ -146,6 +146,7 @@ analytics engineering that turns that data into trusted answers. See
 | Understand how it's built (developers) | [`docs/engineering/`](docs/engineering/) |
 | Understand the source-system design | [`docs/simulation/`](docs/simulation/) |
 | Build the self-serve Metabase dashboard | [`docs/engineering/metabase-dashboard.md`](docs/engineering/metabase-dashboard.md) |
+| Deploy on a VPS (expose dbt docs + Evidence) | [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md) |
 | Run it yourself | [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md) |
 
 ## Quick start (60 seconds)

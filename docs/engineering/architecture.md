@@ -93,9 +93,9 @@ See `decisions/architecture-decisions.md` for the full ADR set. Summary:
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| postgres | 5432 | Operational source-of-truth |
-| api | 8000 | Source APIs + simulation CLI |
-| clickhouse | 8123 (HTTP) / 9000 (native) | Analytical warehouse |
-| dbt | 8080 (docs serve) | Transformation (run on demand) |
-| dlt | — | Ingestion (run on demand) |
-| airflow | 8081 (webserver) | Orchestration (profile `orchestration`) |
+| postgres | — (internal) | Operational source-of-truth |
+| api | — (internal) | Source APIs + simulation CLI |
+| clickhouse | — (internal) | Analytical warehouse |
+| dbt | 8083 (docs serve) | Transformation (run on demand) |
+| dlt | — (internal) | Ingestion (run on demand) |
+| airflow | — (internal) | Orchestration (runs by default; webserver not exposed) |

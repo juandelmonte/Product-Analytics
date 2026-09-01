@@ -55,12 +55,12 @@ docker compose -f /workspace/docker-compose.yml --project-name saas-analytics ex
 
 ```powershell
 # one-time DB init
-docker compose --profile orchestration run --rm airflow-init
+docker compose run --rm airflow-init
 
-# start the scheduler + webserver
-docker compose --profile orchestration up -d airflow-scheduler airflow-webserver
+# start the scheduler + webserver (they run with `docker compose up` by default)
+docker compose up -d airflow-scheduler airflow-webserver
 
-# webserver UI: http://localhost:8081
+# webserver UI: http://localhost:8081 (internal; not exposed on the VPS)
 ```
 
 The daily DAG runs on a schedule; the historical DAG is triggered manually from

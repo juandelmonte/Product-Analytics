@@ -3,17 +3,17 @@ name: saas-analytics
 # ---------------------------------------------------------------------------
 # SaaS Product Analytics Platform — Docker Compose
 #
-# Services:
-#   - postgres   : operational source-of-truth (the simulated SaaS database)
-#   - api        : FastAPI source-system-like APIs + simulation module
-#   - clickhouse : OLAP analytical warehouse (bronze/staging/core/marts)
-#   - dbt        : dbt + ClickHouse adapter (transformation + testing)
-#   - dlt        : ingestion service (historical + incremental pipelines)
+# Full stack. Only TWO services are exposed to the host (and thus to the
+# internet on the VPS): dbt docs (8083) and Evidence (3000). Everything else
+# lives on the internal Docker network only — no host port — which removes
+# most port-collision risk on a shared VPS.
 #
-# Airflow is added in a later phase under its own `orchestration` profile.
+# Host-exposed ports (the only ones to open in the firewall):
+#   8083 -> dbt docs    (renumbered from 8080, which is taken on the VPS)
+#   3000 -> Evidence    (unchanged, free on the VPS)
 #
-# dbt and dlt connect to ClickHouse over HTTP on port 8123. The api service
-# connects to Postgres on port 5432 (internal network).
+# Airflow runs by default (no profile) so the daily_pipeline DAG keeps the
+# marts fresh: advance simulation -> dlt incremental -> dbt build -> tests.
 # ---------------------------------------------------------------------------
 
 x-common-env: &common-env
@@ -22,6 +22,7 @@ x-common-env: &common-env
 services:
   # -------------------------------------------------------------------------
   # PostgreSQL — operational state (the simulated SaaS source-of-truth)
+  # INTERNAL ONLY (no host port). Reachable by other services as postgres:5432.
   # -------------------------------------------------------------------------
   postgres:
     image: postgres:${POSTGRES_VERSION:-16}
@@ -30,8 +31,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-saas}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas}
       POSTGRES_DB: ${POSTGRES_DB:-saas}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -43,6 +42,7 @@ services:
 
   # -------------------------------------------------------------------------
   # FastAPI — source-system-like APIs + simulation CLI
+  # INTERNAL ONLY (no host port). Reachable by dlt as api:8000.
   # -------------------------------------------------------------------------
   api:
     build:
@@ -54,8 +54,6 @@ services:
       SEED: ${SEED:-42}
     volumes:
       - ./api:/app
-    ports:
-      - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -63,6 +61,7 @@ services:
 
   # -------------------------------------------------------------------------
   # ClickHouse — OLAP analytical warehouse
+  # INTERNAL ONLY (no host port). Reachable by dbt/dlt/evidence as clickhouse:8123.
   # -------------------------------------------------------------------------
   clickhouse:
     image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.3}
@@ -72,11 +71,6 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
-    ports:
-      # HTTP interface (dbt, dlt, clickhouse-client --host, browser playground)
-      - "8123:8123"
-      # Native TCP protocol
-      - "9000:9000"
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     ulimits:
@@ -91,7 +85,8 @@ services:
       start_period: 10s
 
   # -------------------------------------------------------------------------
-  # dbt — transformation + testing (entrypoint is `dbt`)
+  # dbt — transformation + testing
+  # EXTERNAL: serves dbt docs on host port 8083 (container 8080).
   # -------------------------------------------------------------------------
   dbt:
     build:
@@ -114,12 +109,13 @@ services:
       clickhouse:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "8083:8080"
     working_dir: /app
     command: ["build"]
 
   # -------------------------------------------------------------------------
   # dlt — ingestion pipelines (run on demand; no long-running process)
+  # INTERNAL ONLY (no host port). Orchestrated by Airflow via docker compose exec.
   # -------------------------------------------------------------------------
   dlt:
     build:
@@ -147,6 +143,7 @@ services:
 
   # -------------------------------------------------------------------------
   # Evidence — curated business report over the dbt marts
+  # EXTERNAL: host port 3000.
   # -------------------------------------------------------------------------
   evidence:
     build:
@@ -172,11 +169,12 @@ services:
         condition: service_healthy
 
   # -------------------------------------------------------------------------
-  # Airflow — orchestration (profile: `orchestration`)
+  # Airflow — orchestration (daily refresh). Runs by default (no profile).
+  # INTERNAL ONLY: the webserver is not exposed to the host.
+  # The scheduler runs daily_pipeline: sim day -> dlt ingest -> dbt build -> test.
   # -------------------------------------------------------------------------
   airflow-postgres:
     image: postgres:16
-    profiles: ["orchestration"]
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -194,7 +192,6 @@ services:
     build:
       context: ./docker/airflow
     image: saas/airflow:2.9.3
-    profiles: ["orchestration"]
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
@@ -205,8 +202,6 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PWD}:/workspace
-    ports:
-      - "8081:8080"
     depends_on:
       airflow-postgres:
         condition: service_healthy
@@ -216,7 +211,6 @@ services:
     build:
       context: ./docker/airflow
     image: saas/airflow:2.9.3
-    profiles: ["orchestration"]
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
@@ -235,7 +229,6 @@ services:
     build:
       context: ./docker/airflow
     image: saas/airflow:2.9.3
-    profiles: ["orchestration"]
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow

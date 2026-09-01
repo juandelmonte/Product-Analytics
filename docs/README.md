@@ -63,6 +63,7 @@ hardened implementation details.
 | [`data_quality_validation.md`](engineering/data_quality_validation.md) | Per-scenario verification results |
 | [`hardening.md`](engineering/hardening.md) | Clean-install + idempotency verification |
 | [`metabase-dashboard.md`](engineering/metabase-dashboard.md) | Build guide for the self-serve Metabase dashboard |
+| [`vps-deployment.md`](engineering/vps-deployment.md) | Deploy the full stack on a VPS (expose dbt docs + Evidence) |
 | [`decisions/architecture-decisions.md`](engineering/decisions/architecture-decisions.md) | Architecture Decision Records |
 
 ---

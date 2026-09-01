@@ -36,7 +36,7 @@ function chq($query) {
     finally { Pop-Location }
 }
 
-# dbt-docs -> regenerate docs and serve them at http://localhost:8080
+# dbt-docs -> regenerate docs and serve them at http://localhost:8083
 function dbt-docs {
     Push-Location $script:AnalyticsRoot
     try {
@@ -85,10 +85,10 @@ function sim($command, $days) {
     finally { Pop-Location }
 }
 
-# airflow-up -> start the Airflow scheduler + webserver
+# airflow-up -> start the Airflow scheduler + webserver (runs with `up` by default)
 function airflow-up {
     Push-Location $script:AnalyticsRoot
-    try { docker compose --profile orchestration up -d airflow-scheduler airflow-webserver }
+    try { docker compose up -d airflow-scheduler airflow-webserver }
     finally { Pop-Location }
 }
 

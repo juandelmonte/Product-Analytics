@@ -66,10 +66,10 @@ docker compose run --rm dbt build --full-refresh
 ### Airflow (orchestration)
 
 ```powershell
-docker compose --profile orchestration run --rm airflow-init
-docker compose --profile orchestration up -d airflow-scheduler airflow-webserver
-# webserver UI: http://localhost:8081  (trigger `historical_initialization` once,
-#                                       `daily_pipeline` runs on a daily schedule)
+docker compose run --rm airflow-init
+docker compose up -d airflow-scheduler airflow-webserver
+# webserver UI: http://localhost:8081 (internal; not exposed on the VPS)
+# trigger `historical_initialization` once, `daily_pipeline` runs on a daily schedule
 ```
 
 ### Evidence (curated report)
@@ -123,7 +123,7 @@ dbt test             # tests only
 dbt debug            # verify dbt <-> ClickHouse connection
 dbt docs generate    # build docs
 
-dbt-docs             # regenerate + serve docs at http://localhost:8080
+dbt-docs             # regenerate + serve docs at http://localhost:8083
 
 ch                   # interactive ClickHouse client on the analytics database
 chq "select 1"       # one-shot SQL query
@@ -136,7 +136,7 @@ sim history --days 720   # generate deterministic history
 sim day                  # advance one day (append-only)
 sim reset                # drop operational data
 
-airflow-up           # start Airflow scheduler + webserver (profile orchestration)
+airflow-up           # start Airflow scheduler + webserver (runs with up by default)
 reset-env            # full reset: down -v -> rebuild -> re-init the whole pipeline
 ```
 
