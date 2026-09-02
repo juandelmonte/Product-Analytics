@@ -73,6 +73,9 @@ services:
       CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     volumes:
       - clickhouse-data:/var/lib/clickhouse
+    ports:
+      # HTTP interface (dbt, dlt, clickhouse-client --host, browser playground)
+      - "8123:8123"
     ulimits:
       nofile:
         soft: 262144
