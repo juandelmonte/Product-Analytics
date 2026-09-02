@@ -170,7 +170,10 @@ services:
   # have no long-running process.
   #
   # Reuses the saas/airflow image because it already bundles the Docker CLI +
-  # compose plugin + bash (it is the orchestration image). Idempotent + guarded:
+  # compose plugin + bash (it is the orchestration image). The `build:` block
+  # is REQUIRED (not just `image:`) so a fresh clone / VPS `up --build` builds
+  # the airflow image locally instead of trying to PULL `saas/airflow` from a
+  # registry (where it does not exist). Idempotent + guarded:
   # it writes a marker file to the `bootstrap-state` volume when the chain
   # completes, so a re-run of `compose up` after a host reboot or redeploy sees
   # the marker and becomes a no-op. To force a full rebuild:
@@ -181,6 +184,8 @@ services:
   # bootstrap` shows the chain output.
   # -------------------------------------------------------------------------
   bootstrap:
+    build:
+      context: ./docker/airflow
     image: saas/airflow:2.9.3
     user: root
     entrypoint: ["bash", "-c"]
