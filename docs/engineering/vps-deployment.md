@@ -26,8 +26,14 @@ most port-collision risk on a shared VPS.
 
 ```bash
 git clone <your-repo-url> projects/06_analytics_environment
-cd projects/06_analytics_environment
+cd projects/06_analytics_environment   # MUST be the repo root (see below)
 ```
+
+> **Run `docker compose` from the repo root.** The stack anchors its code
+> bind-mounts to `PROJECT_ROOT` (defaults to your current directory), which the
+> bootstrap/Airflow containers use to re-resolve mounts to real host paths via
+> the docker socket. If you ever launch from another directory, set
+> `PROJECT_ROOT=/abs/path/to/06_analytics_environment` first.
 
 ### 2. Build and start everything
 

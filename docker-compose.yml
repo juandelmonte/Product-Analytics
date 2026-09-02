@@ -55,7 +55,7 @@ services:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas}@postgres:5432/${POSTGRES_DB:-saas}
       SEED: ${SEED:-42}
     volumes:
-      - ./api:/app
+      - ${PROJECT_ROOT:-.}/api:/app
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,7 +118,7 @@ services:
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
       CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
     volumes:
-      - ./dbt:/app
+      - ${PROJECT_ROOT:-.}/dbt:/app
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -153,7 +153,7 @@ services:
       DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE: ${BRONZE_DB:-bronze}
       API_BASE_URL: http://api:8000
     volumes:
-      - ./dlt:/app
+      - ${PROJECT_ROOT:-.}/dlt:/app
     depends_on:
       clickhouse:
         condition: service_healthy
@@ -205,6 +205,11 @@ services:
       <<: *common-env
       DOCKER_HOST: unix:///var/run/docker.sock
       COMPOSE_PROJECT_NAME: saas-analytics
+      # Host-absolute path of the project. The nested `docker compose run`
+      # calls re-resolve ${PROJECT_ROOT}/<svc> bind mounts against this so the
+      # host daemon mounts the REAL host path (a relative mount would resolve
+      # to /workspace/<svc>, which does not exist on the host -> empty /app).
+      PROJECT_ROOT: ${PWD}
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: "8123"
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
@@ -291,8 +296,11 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__WEBSERVER__SECRET_KEY: "dev-secret-not-for-prod"
+      # Host-absolute project path for the DAGs' nested `docker compose run`
+      # calls (see bootstrap service comment).
+      PROJECT_ROOT: ${PWD}
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PWD}:/workspace
     depends_on:
@@ -317,8 +325,11 @@ services:
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      # Host-absolute project path for the DAGs' nested `docker compose run`
+      # calls (see bootstrap service comment).
+      PROJECT_ROOT: ${PWD}
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
       - /var/run/docker.sock:/var/run/docker.sock
       - ${PWD}:/workspace
     depends_on:
@@ -342,7 +353,7 @@ services:
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     volumes:
-      - ./airflow/dags:/opt/airflow/dags
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
     depends_on:
       airflow-postgres:
         condition: service_healthy
