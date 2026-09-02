@@ -43,6 +43,23 @@ advance_day():
 | Expanding accounts | ~14%/month of paying accounts add seats |
 | Different account sizes | seats 1..10 on subscription; company_size varies |
 
+## Segment behaviour
+
+Account attributes are **not** cosmetic — they drive behaviour, so dimensional
+slices of the marts are non-uniform (realistic). Each account's `country`,
+`industry`, and `company_size` scale the global probabilities:
+
+| Multiplier | Applies to | Direction |
+|-----------|-----------|-----------|
+| `fit` (product-market fit) | onboarding funnel completion + paid conversion | higher for SaaS / Finance / Healthcare, larger companies, US |
+| `expand` (expansion appetite) | monthly expansion likelihood | higher for SaaS / E-commerce / Media, larger companies |
+| `stickiness` (retention) | churn + dormancy | higher for Finance / Healthcare / Education, larger, CA/GB |
+
+Concretely: a `1000+` SaaS account in the US converts and expands far more and
+churns less than a `1-10` Media account in CA — which is what makes the
+activation-by-country/industry/size and MRR-by-size analyses interesting rather
+than flat.
+
 ## Determinism & the pending queue
 
 - Each day's random draws use a **per-day seed** = `f(SEED, day_index)`, so a

@@ -67,6 +67,94 @@ P_MISSING_ASSOC = 0.12
 ACTIVATION_WINDOW_DAYS = 7
 HISTORY_DAYS = 24 * 30  # ~24 months
 
+# --- segment behaviour modifiers -------------------------------------------
+# Account attributes (country / industry / company size) scale the global
+# probabilities above, so different segments behave DIFFERENTLY. Without this,
+# every dimension slice of the marts is uniform because each account is drawn
+# from the same distribution and never behaves differently by segment.
+#
+# Multipliers are centred on ~1.0 so the overall (global) averages stay roughly
+# the same, but a 1000+ SaaS account in the US will meaningfully out-convert and
+# out-expand a 1-10 person Media account in CA, which is what makes the
+# dimensional analysis non-trivial.
+def _clamp(p: float) -> float:
+    return max(0.0, min(1.0, p))
+
+
+# product-market fit per industry: scales onboarding completion + paid conversion
+INDUSTRY_FIT = {
+    "SaaS": 1.15,
+    "E-commerce": 0.90,
+    "Finance": 1.05,
+    "Healthcare": 1.10,
+    "Education": 0.95,
+    "Media": 0.85,
+}
+
+# expansion appetite per industry (bigger teams add seats faster)
+INDUSTRY_EXPAND = {
+    "SaaS": 1.15,
+    "E-commerce": 1.05,
+    "Finance": 1.00,
+    "Healthcare": 0.95,
+    "Education": 0.90,
+    "Media": 1.10,
+}
+
+# stickiness per industry (higher = less churn + dormancy)
+INDUSTRY_STICKINESS = {
+    "SaaS": 1.00,
+    "E-commerce": 0.85,
+    "Finance": 1.25,
+    "Healthcare": 1.15,
+    "Education": 1.05,
+    "Media": 0.80,
+}
+
+# larger companies convert + expand more and churn less (enterprise motion)
+SIZE_FIT = {
+    "1-10": 0.90,
+    "11-50": 1.00,
+    "51-200": 1.05,
+    "201-1000": 1.15,
+    "1000+": 1.30,
+}
+
+SIZE_STICKINESS = {
+    "1-10": 0.90,
+    "11-50": 1.00,
+    "51-200": 1.05,
+    "201-1000": 1.15,
+    "1000+": 1.25,
+}
+
+# US is the mature core market; CA/GB a touch behind on conversion
+COUNTRY_FIT = {
+    "US": 1.10,
+    "CA": 0.95,
+    "GB": 1.00,
+}
+
+COUNTRY_STICKINESS = {
+    "US": 1.00,
+    "CA": 1.10,
+    "GB": 1.05,
+}
+
+
+def _segment_modifiers(country: str, industry: str, size: str) -> dict:
+    """Aggregate per-account multipliers.
+
+    fit        — scales onboarding completion + paid conversion (higher = better)
+    expand     — scales monthly expansion likelihood
+    stickiness — scales retention: higher = LESS dormancy and churn
+    """
+    return {
+        "fit":        COUNTRY_FIT.get(country, 1.0) * INDUSTRY_FIT.get(industry, 1.0) * SIZE_FIT.get(size, 1.0),
+        "expand":     INDUSTRY_EXPAND.get(industry, 1.0) * SIZE_FIT.get(size, 1.0),
+        "stickiness": COUNTRY_STICKINESS.get(country, 1.0) * INDUSTRY_STICKINESS.get(industry, 1.0) * SIZE_STICKINESS.get(size, 1.0),
+    }
+
 
 class Simulator:
     def __init__(self, session: Session, seed: int):
@@ -238,6 +326,7 @@ class Simulator:
         size = choice(self.rng, cat.COMPANY_SIZES)
         source = choice(self.rng, cat.LEAD_SOURCES)
         channel = choice(self.rng, cat.CHANNELS)
+        mod = _segment_modifiers(country, industry, size)
 
         # account + owner
         acc = Account(account_id=aid, name=f"Company {aid}", country=country, industry=industry, company_size=size, lead_source=source)
@@ -289,19 +378,21 @@ class Simulator:
         if self.rng.random() < P_DUP_EVENT:
             self._schedule("duplicate", {"event_id": ev2.event_id, "event_name": "user_signup", "distinct_id": f"{aid}_u1", "account_id": aid, "event_at": ev2.event_at.isoformat(), "properties": dict(ev2.properties)}, day + timedelta(days=self.rng.randint(1, 5)))
 
-        # walk the onboarding funnel (progressive per-step dropout)
-        self._onboarding_flow(aid, day, ts)
+        # walk the onboarding funnel (progressive per-step dropout), scaled by
+        # the account's product-market fit so stronger segments activate more.
+        self._onboarding_flow(aid, day, ts, fit_mod=mod["fit"])
 
         # conversion: fully activated accounts convert at a healthy rate;
         # accounts that dropped during onboarding still convert occasionally
         # (free/trial -> paid happens even without full activation, just much
-        # less often).
+        # less often). Segment fit scales both paths.
         st = self.session.get(SimAccountState, aid)
-        p_convert = P_CONVERT_ACTIVATED if st.activated else P_CONVERT_DORMANT
+        base_conv = P_CONVERT_ACTIVATED if st.activated else P_CONVERT_DORMANT
+        p_convert = _clamp(base_conv * mod["fit"])
         if self.rng.random() < p_convert:
             self._schedule_conversion(aid, day)
 
-    def _onboarding_flow(self, aid: str, day: date, signup_ts: datetime) -> None:
+    def _onboarding_flow(self, aid: str, day: date, signup_ts: datetime, fit_mod: float = 1.0) -> None:
         """Activation path: workspace → project → invite → task → completed.
 
         Starts AFTER the signup event (signup_ts) so activation is always
@@ -309,12 +400,15 @@ class Simulator:
         probability, so the funnel shows a realistic, progressive slope instead
         of a single binary jump; the account is marked activated only if it
         reaches the final step.
+
+        `fit_mod` (>1 = better product-market fit) lowers the dropout at every
+        step, so stronger segments (larger / SaaS / US) activate more.
         """
         ts0 = signup_ts + timedelta(minutes=15)
         owner = f"{aid}_u1"
 
         # 1. workspace (a few signups never even create a workspace)
-        if self.rng.random() >= P_WORKSPACE:
+        if self.rng.random() >= _clamp(1 - (1 - P_WORKSPACE) * fit_mod):
             return
         ws = Workspace(workspace_id=self._nid("ws"), account_id=aid, name="Workspace")
         self.session.add(ws)
@@ -325,7 +419,7 @@ class Simulator:
         late = self.rng.random() < P_LATE_EVENT
 
         # 2. project
-        if self.rng.random() >= P_PROJECT_GIVEN_WORKSPACE:
+        if self.rng.random() >= _clamp(1 - (1 - P_PROJECT_GIVEN_WORKSPACE) * fit_mod):
             return
         prj = Project(project_id=self._nid("prj"), workspace_id=ws.workspace_id, name="First project")
         self.session.add(prj)
@@ -334,7 +428,7 @@ class Simulator:
         self._emit_or_schedule("project_created", owner, aid, pev, ts0 + timedelta(minutes=20), late, day)
 
         # 3. invite teammate (membership count → 2)
-        if self.rng.random() >= P_INVITE_GIVEN_PROJECT:
+        if self.rng.random() >= _clamp(1 - (1 - P_INVITE_GIVEN_PROJECT) * fit_mod):
             return
         invitee = f"{aid}_u2"
         self.session.add(User(user_id=invitee, account_id=aid, email=f"member+{aid}@example.com", role="member"))
@@ -343,14 +437,14 @@ class Simulator:
         self._emit_or_schedule("membership_invited", owner, aid, {"invitee_email": f"member+{aid}@example.com", "role": "member"}, ts0 + timedelta(hours=1), late, day)
 
         # 4. first task created
-        if self.rng.random() >= P_TASK_GIVEN_INVITE:
+        if self.rng.random() >= _clamp(1 - (1 - P_TASK_GIVEN_INVITE) * fit_mod):
             return
         tsk = Task(task_id=self._nid("tsk"), project_id=prj.project_id, assignee_id=owner, title="Set up", status="done", completed_at=ts0 + timedelta(hours=6))
         self.session.add(tsk)
         self._emit_or_schedule("task_created", owner, aid, {"workspace_id": ws.workspace_id, "project_id": prj.project_id, "task_id": tsk.task_id}, ts0 + timedelta(hours=3), late, day)
 
         # 5. task completed (the activation moment)
-        if self.rng.random() >= P_COMPLETE_GIVEN_TASK:
+        if self.rng.random() >= _clamp(1 - (1 - P_COMPLETE_GIVEN_TASK) * fit_mod):
             return
         self._emit_or_schedule("task_completed", owner, aid, {"task_id": tsk.task_id, "project_id": prj.project_id, "hours_to_complete": 3}, ts0 + timedelta(hours=6), late, day)
 
@@ -480,6 +574,10 @@ class Simulator:
             if st.engagement == "dormant":
                 continue
 
+            # account attributes feed segment-specific churn/expand/dormancy
+            acc = self.session.get(Account, st.account_id)
+            mod = _segment_modifiers(acc.country, acc.industry, acc.company_size)
+
             # engagement-weighted daily event count, with a weekend dip
             base = {"high": 3, "medium": 1, "low": 0}[st.engagement]
             n_events = max(0, base - (1 if is_weekend else 0)) if self.rng.random() < 0.7 else 0
@@ -488,15 +586,18 @@ class Simulator:
 
             # monthly lifecycle changes (dormancy, churn, expansion)
             if self.day_index > 0 and self.day_index % 30 == 0:
-                # dormancy: activated accounts occasionally stop using the product
-                if st.engagement != "dormant" and self.rng.random() < P_DORMANT:
+                # dormancy: activated accounts occasionally stop using the product;
+                # stickier segments (finance/healthcare, larger, CA) go dormant less.
+                if st.engagement != "dormant" and self.rng.random() < _clamp(P_DORMANT / mod["stickiness"]):
                     st.engagement = "dormant"
                 if st.engagement == "dormant":
                     continue
                 if st.plan in ("pro", "enterprise"):
-                    if self.rng.random() < P_CHURN:
+                    # churn: stickier segments churn less
+                    if self.rng.random() < _clamp(P_CHURN / mod["stickiness"]):
                         self._churn(st.account_id, day)
-                    elif self.rng.random() < P_EXPAND:
+                    # expansion: higher expand appetite + larger size expand more
+                    elif self.rng.random() < _clamp(P_EXPAND * mod["expand"]):
                         self._expand(st.account_id, day)
 
     def _random_activity_event(self, aid: str, day: date) -> None:
