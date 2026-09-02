@@ -65,16 +65,15 @@ sim-day: ## Advance the simulation by one day (append-only)
 sim-reset: ## Drop and recreate the operational schema
 	docker compose run --rm api python -m app.sim reset
 
-reset-environment: ## Full reset: stop, wipe volumes, rebuild, re-init
+reset-environment: ## Full reset: wipe volumes, rebuild, then self-bootstrap
 	docker compose down -v
 	docker compose build
-	docker compose up -d postgres clickhouse api
-	docker compose run --rm api alembic upgrade head
-	docker compose run --rm api python -m app.sim reset
-	docker compose run --rm api python -m app.sim history --days 720
-	docker compose run --rm dlt python -m pipelines.ingest
-	docker compose run --rm dbt build
-	docker compose exec -T clickhouse clickhouse-client --query "CREATE USER IF NOT EXISTS evidence IDENTIFIED WITH sha256_password BY 'evidence'; GRANT SELECT ON marts.* TO evidence"
+	# The one-time `bootstrap` service runs the full pipeline automatically
+	# (alembic -> sim history -> dlt -> dbt -> evidence grant); airflow and
+	# evidence wait for it via depends_on. Same flow as a VPS cold start.
+	docker compose up -d
+	docker compose wait bootstrap
+	docker compose logs bootstrap | tail -n 15
 
 backfill: ## Re-ingest from a watermark and rebuild (corrects late data)
 	docker compose run --rm dlt python -m pipelines.ingest --incremental

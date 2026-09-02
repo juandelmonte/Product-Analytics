@@ -24,33 +24,47 @@ way around the code.
 
 ## Running the project (full pipeline)
 
+The stack is **self-bootstrapping**: `docker compose up --build -d` builds the
+images, starts the services, and the one-time `bootstrap` service runs the full
+pipeline automatically (schema → 24 months of history → dlt ingest → dbt build
+→ Evidence user). Airflow and Evidence start only after the bootstrap completes.
+
 ```powershell
-# 1. Build the images (needed once, and after any Dockerfile change)
-docker compose build
+# 1. Build + start everything (runs the full pipeline automatically)
+docker compose up --build -d
 
-# 2. Start the data infrastructure (Postgres + ClickHouse + API)
-docker compose up -d postgres clickhouse api
+# 2. Watch the one-time bootstrap (alembic-free: uses `sim reset` create_all)
+docker compose logs -f bootstrap
 
-# 3. Apply the operational schema + generate 24 months of history
-#    (create ClickHouse databases first)
-docker compose exec clickhouse clickhouse-client --query "CREATE DATABASE IF NOT EXISTS bronze; CREATE DATABASE IF NOT EXISTS staging; CREATE DATABASE IF NOT EXISTS core; CREATE DATABASE IF NOT EXISTS marts"
-docker compose run --rm api alembic upgrade head
-docker compose run --rm api python -m app.sim history --days 720
-
-# 4. Ingest into ClickHouse bronze, then transform + test with dbt
-docker compose run --rm dlt python -m pipelines.ingest
-docker compose run --rm dbt build
+# 3. Open the curated report
+#    → http://localhost:3000   (Evidence)
 ```
 
-That's the full chain: business simulation → source APIs → dlt → ClickHouse →
-dbt marts (**109 checks: 25 models + 84 tests**).
+On a **fresh clone / wiped volumes** the bootstrap runs the whole chain:
+
+```
+create ClickHouse DBs (bronze/staging/core/marts)
+→ reset operational schema + generate 24 months of simulated history
+→ dlt ingest into ClickHouse bronze
+→ dbt build (staging → core → marts) + data tests
+→ create the read-only Evidence user + grant
+```
+
+A completion marker on the `bootstrap-state` volume makes later `up`s a no-op.
 
 > **One-command reset**: `. .\scripts\activate.ps1` then `reset-env` (or
-> `make reset-environment`) wipes volumes and reruns the whole chain from
-> scratch.
+> `make reset-environment`) = `down -v` + `build` + `up` + `docker compose
+> wait bootstrap`.
 
 > Docker Desktop must be running. If `docker compose` errors with a
 > pipe/named-pipe message, start Docker Desktop first.
+>
+> **Windows dev note**: the `bootstrap` compose service and the Airflow DAGs
+> orchestrate via the mounted docker socket with `docker compose run` — this
+> resolves bind mounts correctly on Linux (the VPS deploy target), but on
+> Docker Desktop (Windows) nested `run` cannot re-resolve `./api`-style mounts
+> against the host path. On Windows, run the same chain from the host shell
+> instead (`reset-env`), which is equivalent and fully validated.
 
 ### Daily advance + backfill
 
@@ -65,12 +79,18 @@ docker compose run --rm dbt build --full-refresh
 
 ### Airflow (orchestration)
 
+Airflow starts automatically with `docker compose up` (its `airflow-init` runs
+`db init`, then scheduler + webserver wait for the bootstrap to finish). To run
+it explicitly, or after it was stopped:
+
 ```powershell
-docker compose run --rm airflow-init
 docker compose up -d airflow-scheduler airflow-webserver
 # webserver UI: http://localhost:8081 (internal; not exposed on the VPS)
-# trigger `historical_initialization` once, `daily_pipeline` runs on a daily schedule
+# `daily_pipeline` runs on a daily schedule: advance sim → ingest → build → test
 ```
+
+If you want the one-time full initialisation as a DAG instead of the automatic
+`bootstrap` service, trigger `historical_initialization` once from the UI.
 
 ### Evidence (curated report)
 
@@ -121,9 +141,12 @@ dbt build            # full dbt pipeline: models + tests
 dbt run              # models only
 dbt test             # tests only
 dbt debug            # verify dbt <-> ClickHouse connection
-dbt docs generate    # build docs
+dbt docs generate    # (re)build the docs catalog into target/
 
-dbt-docs             # regenerate + serve docs at http://localhost:8083
+dbt-docs             # regenerate docs, then serve in the FOREGROUND at
+                     # http://localhost:8083 (Ctrl+C stops it).
+                     # NOTE: dbt prints "localhost:8080" — that's the container
+                     # port; on the host browse to 8083 (compose maps 8083->8080).
 
 ch                   # interactive ClickHouse client on the analytics database
 chq "select 1"       # one-shot SQL query
@@ -138,6 +161,13 @@ sim reset                # drop operational data
 
 airflow-up           # start Airflow scheduler + webserver (runs with up by default)
 reset-env            # full reset: down -v -> rebuild -> re-init the whole pipeline
+```
+
+> **Docs are served automatically by the stack.** On `docker compose up`, the
+> `dbt` service runs `dbt docs serve` as a persistent server (after the
+> bootstrap generates the catalog), so `http://localhost:8083` is available with
+> no manual step. `dbt-docs` above is only needed when you want to regenerate
+> AND serve docs in the foreground during development.
 ```
 
 ### Full commands (what the shortcuts expand to)

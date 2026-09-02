@@ -26,6 +26,7 @@ services:
   # -------------------------------------------------------------------------
   postgres:
     image: postgres:${POSTGRES_VERSION:-16}
+    restart: unless-stopped
     environment:
       <<: *common-env
       POSTGRES_USER: ${POSTGRES_USER:-saas}
@@ -48,6 +49,7 @@ services:
     build:
       context: ./docker/api
     image: saas/source-api:0.1
+    restart: unless-stopped
     environment:
       <<: *common-env
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas}@postgres:5432/${POSTGRES_DB:-saas}
@@ -65,6 +67,7 @@ services:
   # -------------------------------------------------------------------------
   clickhouse:
     image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.3}
+    restart: unless-stopped
     environment:
       <<: *common-env
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
@@ -88,8 +91,16 @@ services:
       start_period: 10s
 
   # -------------------------------------------------------------------------
-  # dbt — transformation + testing
+  # dbt — transformation + testing + persistent docs server.
   # EXTERNAL: serves dbt docs on host port 8083 (container 8080).
+  #
+  # On `docker compose up`, this service runs `dbt docs serve` (a long-running
+  # HTTP server) so the docs are reachable at :8083 without a manual step. It
+  # waits for the one-time `bootstrap` to finish first — the bootstrap runs
+  # `dbt build` then `dbt docs generate`, which produce the manifest/catalog
+  # this server reads. For ad-hoc transformation/testing, invoke dbt explicitly
+  # via `docker compose run --rm dbt <cmd>` (never auto-runs `dbt build`, which
+  # would race the ingest on a cold start).
   # -------------------------------------------------------------------------
   dbt:
     build:
@@ -111,14 +122,20 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
+      # Serve docs only AFTER the bootstrap has built the marts and generated
+      # the catalog — otherwise docs serve would start against empty data.
+      bootstrap:
+        condition: service_completed_successfully
     ports:
       - "8083:8080"
     working_dir: /app
-    command: ["build"]
+    restart: unless-stopped
+    command: ["docs", "serve", "--port", "8080", "--host", "0.0.0.0"]
 
   # -------------------------------------------------------------------------
   # dlt — ingestion pipelines (run on demand; no long-running process)
-  # INTERNAL ONLY (no host port). Orchestrated by Airflow via docker compose exec.
+  # INTERNAL ONLY (no host port). Orchestrated by the bootstrap service and
+  # Airflow via `docker compose run --rm --no-deps`.
   # -------------------------------------------------------------------------
   dlt:
     build:
@@ -145,6 +162,66 @@ services:
     working_dir: /app
 
   # -------------------------------------------------------------------------
+  # bootstrap — ONE-TIME full-pipeline initialisation.
+  # Runs the complete chain on a cold start (empty volumes): operational
+  # schema -> 24 months of simulated history -> dlt ingest -> dbt build ->
+  # Evidence user + grant. It shells out to `docker compose run --rm` against
+  # the mounted docker socket (like Airflow), so it works even though dlt/dbt
+  # have no long-running process.
+  #
+  # Reuses the saas/airflow image because it already bundles the Docker CLI +
+  # compose plugin + bash (it is the orchestration image). Idempotent + guarded:
+  # it writes a marker file to the `bootstrap-state` volume when the chain
+  # completes, so a re-run of `compose up` after a host reboot or redeploy sees
+  # the marker and becomes a no-op. To force a full rebuild:
+  #   docker compose down -v && docker compose up --build
+  #
+  # The service exits 0 when done (restart: "no"). `docker compose up` runs it
+  # once in dependency order then leaves it exited; `docker compose logs
+  # bootstrap` shows the chain output.
+  # -------------------------------------------------------------------------
+  bootstrap:
+    image: saas/airflow:2.9.3
+    user: root
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        set -euo pipefail
+        MARKER=/bootstrap-state/.complete
+        if [ -f "$$MARKER" ]; then
+          echo "bootstrap: already complete ($$MARKER present) — nothing to do."
+          exit 0
+        fi
+        echo "bootstrap: running full pipeline initialisation..."
+        bash /workspace/scripts/bootstrap.sh
+        echo "bootstrap: done."
+        touch "$$MARKER"
+    environment:
+      <<: *common-env
+      DOCKER_HOST: unix:///var/run/docker.sock
+      COMPOSE_PROJECT_NAME: saas-analytics
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      BRONZE_DB: ${BRONZE_DB:-bronze}
+      SEED: ${SEED:-42}
+      SIM_HISTORY_DAYS: ${SIM_HISTORY_DAYS:-720}
+      EVIDENCE_CLICKHOUSE_PASSWORD: ${EVIDENCE_CLICKHOUSE_PASSWORD:-evidence}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+      - bootstrap-state:/bootstrap-state
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # -------------------------------------------------------------------------
   # Evidence — curated business report over the dbt marts
   # EXTERNAL: host port 3000.
   # -------------------------------------------------------------------------
@@ -153,6 +230,7 @@ services:
       context: ./evidence
       dockerfile: ../docker/evidence/Dockerfile
     image: saas/evidence:0.1
+    restart: unless-stopped
     environment:
       <<: *common-env
       CLICKHOUSE_HOST: clickhouse
@@ -170,6 +248,11 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
+      # Evidence queries the marts as the dedicated `evidence` user — both only
+      # exist after the one-time bootstrap (dbt build + grant). Starting it any
+      # earlier means it points at empty/nonexistent data.
+      bootstrap:
+        condition: service_completed_successfully
 
   # -------------------------------------------------------------------------
   # Airflow — orchestration (daily refresh). Runs by default (no profile).
@@ -178,6 +261,7 @@ services:
   # -------------------------------------------------------------------------
   airflow-postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: airflow
       POSTGRES_PASSWORD: airflow
@@ -195,6 +279,7 @@ services:
     build:
       context: ./docker/airflow
     image: saas/airflow:2.9.3
+    restart: unless-stopped
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
@@ -208,12 +293,20 @@ services:
     depends_on:
       airflow-postgres:
         condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      # Start the scheduler only AFTER the one-time bootstrap has populated the
+      # warehouse — otherwise daily_pipeline would race (and fail on) an empty
+      # Postgres/ClickHouse on a cold `up`.
+      bootstrap:
+        condition: service_completed_successfully
     command: ["webserver"]
 
   airflow-scheduler:
     build:
       context: ./docker/airflow
     image: saas/airflow:2.9.3
+    restart: unless-stopped
     environment:
       AIRFLOW__CORE__EXECUTOR: LocalExecutor
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
@@ -226,6 +319,13 @@ services:
     depends_on:
       airflow-postgres:
         condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      # Start the scheduler only AFTER the one-time bootstrap has populated the
+      # warehouse — otherwise daily_pipeline would race (and fail on) an empty
+      # Postgres/ClickHouse on a cold `up`.
+      bootstrap:
+        condition: service_completed_successfully
     command: ["scheduler"]
 
   airflow-init:
@@ -241,9 +341,14 @@ services:
     depends_on:
       airflow-postgres:
         condition: service_healthy
-    command: ["db", "migrate"]
+    # Airflow 2.9.3 requires `db init` (creates the FAB/webserver tables +
+    # admin user), NOT just `db migrate`. Without it the webserver exits with
+    # "You need to initialize the database".
+    command: ["db", "init"]
+    restart: "no"
 
 volumes:
   postgres-data:
   clickhouse-data:
   airflow-postgres-data:
+  bootstrap-state:

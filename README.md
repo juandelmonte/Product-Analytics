@@ -149,27 +149,36 @@ analytics engineering that turns that data into trusted answers. See
 | Deploy on a VPS (expose dbt docs + Evidence) | [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md) |
 | Run it yourself | [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md) |
 
-## Quick start (60 seconds)
+## Quick start (self-bootstrapping)
+
+The stack **bootstraps itself**: on a fresh clone (or after `down -v`),
+`docker compose up --build -d` runs the entire pipeline automatically via the
+one-time `bootstrap` service — 24 months of simulated history → dlt ingest →
+dbt build (models + tests) → Evidence user — and then Airflow keeps the marts
+fresh on a daily schedule.
 
 ```powershell
-# 1. Build + start the stack
-docker compose build
-docker compose up -d postgres clickhouse api
+# 1. Build + start everything (runs the full pipeline automatically)
+docker compose up --build -d
 
-# 2. Seed the source systems, ingest, transform
-docker compose exec clickhouse clickhouse-client --query "CREATE DATABASE IF NOT EXISTS bronze; CREATE DATABASE IF NOT EXISTS staging; CREATE DATABASE IF NOT EXISTS core; CREATE DATABASE IF NOT EXISTS marts"
-docker compose run --rm api alembic upgrade head
-docker compose run --rm api python -m app.sim history --days 720
-docker compose run --rm dlt python -m pipelines.ingest
-docker compose run --rm dbt build          # 109/109 passing
+# 2. Watch the one-time bootstrap until it completes
+docker compose logs -f bootstrap
 
 # 3. Open the curated report
-#    (Metabase self-serve dashboard: see docs/engineering/metabase-dashboard.md)
-docker compose up -d evidence              # → http://localhost:3000
+#    → http://localhost:3000   (Evidence)
 ```
 
-Full developer instructions (Airflow, daily advance, shortcuts) live in
-[`docs/engineering/getting-started.md`](docs/engineering/getting-started.md).
+> **One-command reset**: `. .\scripts\activate.ps1` then `reset-env` (or
+> `make reset-environment`) = wipe volumes + rebuild + re-bootstrap.
+>
+> **Windows dev note**: the automatic `bootstrap` service + Airflow DAGs
+> orchestrate via the mounted docker socket, which resolves code bind-mounts
+> correctly on **Linux** (the VPS target). On Docker Desktop (Windows), run the
+> same chain from the host shell with `reset-env` instead.
+
+Full developer instructions (Airflow, daily advance, shortcuts, VPS deploy)
+live in [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md)
+and [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md).
 
 ---
 

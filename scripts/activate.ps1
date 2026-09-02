@@ -37,10 +37,14 @@ function chq($query) {
 }
 
 # dbt-docs -> regenerate docs and serve them at http://localhost:8083
+# (NOTE: the `dbt docs serve` output says "localhost:8080" — that is the
+# CONTAINER port. The compose `dbt` service maps host 8083 -> container 8080,
+# and `--service-ports` publishes that mapping, so browse to 8083 on the host.)
 function dbt-docs {
     Push-Location $script:AnalyticsRoot
     try {
         docker compose run --rm dbt docs generate
+        Write-Host "Serving dbt docs at http://localhost:8083  (Ctrl+C to stop)" -ForegroundColor Green
         docker compose run --rm --service-ports dbt docs serve --port 8080 --host 0.0.0.0
     }
     finally { Pop-Location }
@@ -99,19 +103,21 @@ function bi-up {
     finally { Pop-Location }
 }
 
-# reset-env -> full reset: wipe volumes, rebuild, re-init the pipeline
+# reset-env -> full reset: wipe volumes, rebuild, then let the stack
+# self-bootstrap (the `bootstrap` service runs the full pipeline once).
+# Equivalent to the VPS flow: clone -> docker compose up --build -d.
 function reset-env {
     Push-Location $script:AnalyticsRoot
     try {
         docker compose down -v
         docker compose build
-        docker compose up -d postgres clickhouse api
-        docker compose run --rm api alembic upgrade head
-        docker compose run --rm api python -m app.sim reset
-        docker compose run --rm api python -m app.sim history --days 720
-        docker compose run --rm dlt python -m pipelines.ingest
-        docker compose run --rm dbt build
-        docker compose exec -T clickhouse clickhouse-client --query "CREATE USER IF NOT EXISTS evidence IDENTIFIED WITH sha256_password BY 'evidence'; GRANT SELECT ON marts.* TO evidence"
+        # `up` starts the whole stack; the one-time `bootstrap` service runs the
+        # pipeline (alembic -> sim history -> dlt -> dbt -> evidence grant)
+        # automatically, and airflow/evidence wait for it via depends_on.
+        docker compose up -d
+        Write-Host "Stack up. Waiting for the one-time bootstrap to complete..." -ForegroundColor Yellow
+        docker compose wait bootstrap
+        docker compose logs bootstrap | Select-Object -Last 15
     }
     finally { Pop-Location }
 }
