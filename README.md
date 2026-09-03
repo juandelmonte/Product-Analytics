@@ -4,6 +4,15 @@
 operational source systems to a trusted analytical model that answers the
 questions product and commercial teams actually ask.
 
+> ## 🟢 Live & running
+>
+> This platform is deployed and serving live data right now:
+>
+> | Surface | URL |
+> |---------|-----|
+> | **Evidence — BI report** | <http://2.24.207.46:3000/> |
+> | **dbt docs** | <http://2.24.207.46:8083> |
+
 ---
 
 ## TL;DR
