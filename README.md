@@ -12,7 +12,7 @@ questions product and commercial teams actually ask.
 |---|---|
 | **What it is** | A complete analytics stack: source systems → ingestion → warehouse → transformation → semantic layer → BI |
 | **What it proves** | I can take a business question, trace it to source data, and deliver a *trusted* answer — handling real-world messiness (late/duplicate events, 3 identity namespaces, mutable CRM, schema drift) along the way |
-| **Stack** | Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence · Metabase |
+| **Stack** | Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence |
 | **Verification** | 30 dbt models + 100 data tests, **all passing** |
 | **One-liner** | `docker compose up` → a working analytics platform with a live BI dashboard |
 
@@ -50,18 +50,16 @@ flowchart LR
     end
 
     Ops --> Ing
-    Sem --> BI["BI<br/>Evidence (curated) + Metabase (self-serve)"]
+    Sem --> BI["BI<br/>Evidence (curated report)"]
 ```
 
 The operational system and the analytics system are deliberately **separate** —
 just like a real company, where the analytics team doesn't own the product or
 the CRM, it consumes their data.
 
-The BI layer is split the way real teams split it: an **Evidence** report for
-curated, version-controlled narrative (this repo), and a **Metabase** dashboard
-for self-serve exploration by business users (build guide in
-[`docs/engineering/metabase-dashboard.md`](docs/engineering/metabase-dashboard.md)).
-Both consume the same mart tables and the same metric definitions.
+The BI layer is an **Evidence** report — a curated, version-controlled
+narrative over the marts (this repo). It consumes the same mart tables and the
+same metric definitions as the rest of the platform.
 
 ## The five questions it answers
 
@@ -145,7 +143,6 @@ analytics engineering that turns that data into trusted answers. See
 | Understand the analytical model and metrics (BI-user reference) | [`docs/analytics/`](docs/analytics/) |
 | Understand how it's built (developers) | [`docs/engineering/`](docs/engineering/) |
 | Understand the source-system design | [`docs/simulation/`](docs/simulation/) |
-| Build the self-serve Metabase dashboard | [`docs/engineering/metabase-dashboard.md`](docs/engineering/metabase-dashboard.md) |
 | Deploy on a VPS (expose dbt docs + Evidence) | [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md) |
 | Run it yourself | [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md) |
 
@@ -172,4 +169,4 @@ to deploy it on a server.
 
 ## Technology
 
-Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence · Metabase · Docker Compose
+Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence · Docker Compose

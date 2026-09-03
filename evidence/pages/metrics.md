@@ -7,9 +7,8 @@ sidebar_position: 4
 
 This page links each metric to its definition in
 [`docs/analytics/metric_dictionary.md`](/docs/analytics/metric_dictionary.md).
-The metric dictionary is the **single source of truth** for definitions — both
-this report and the Metabase self-serve dashboard consume the same mart tables
-and reference the same definitions.
+The metric dictionary is the **single source of truth** for definitions — every
+report page reads the same mart tables and references the same definitions.
 
 | Metric | Mart source | Dictionary § |
 |--------|-------------|--------------|
@@ -32,12 +31,3 @@ The relationship between entities, facts, and time semantics is documented in
 [`docs/analytics/semantic_model.md`](/docs/analytics/semantic_model.md), and the
 traceability chain (metric → source → process) in
 [`docs/analytics/business_to_data_traceability.md`](/docs/analytics/business_to_data_traceability.md).
-
-## Where to self-serve
-
-For free-form exploration, the project also includes a **Metabase** dashboard
-over the same `marts` database — see
-[`docs/engineering/metabase-dashboard.md`](/docs/engineering/metabase-dashboard.md)
-for the build guide. Business users can ask their own questions there without
-touching SQL; this Evidence report remains the curated, version-controlled
-narrative.

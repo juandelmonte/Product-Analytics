@@ -6,8 +6,7 @@ sidebar_position: 2
 # Explore the data
 
 Raw views over the marts, grouped by business-question area. Every chart reads
-the same SQL files used by the report — the same SQL can be pasted into
-Metabase.
+the same SQL files used by the report.
 
 ## Overview KPIs
 

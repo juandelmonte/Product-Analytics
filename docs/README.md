@@ -32,8 +32,8 @@ systems exist only so the analytics solution has realistic data to work with.
 ## analytics/ — the analytical model
 
 The *what the data means* layer. This is the contract between the warehouse and
-the BI layer, and the reference for anyone consuming the marts, the Evidence
-report, or the Metabase dashboard.
+the BI layer, and the reference for anyone consuming the marts or the Evidence
+report.
 
 | Doc | What it explains |
 |-----|------------------|
@@ -62,7 +62,6 @@ hardened implementation details.
 | [`orchestration_design.md`](engineering/orchestration_design.md) | Airflow DAGs (orchestration-only) |
 | [`data_quality_validation.md`](engineering/data_quality_validation.md) | Per-scenario verification results |
 | [`hardening.md`](engineering/hardening.md) | Clean-install + idempotency verification |
-| [`metabase-dashboard.md`](engineering/metabase-dashboard.md) | Build guide for the self-serve Metabase dashboard |
 | [`vps-deployment.md`](engineering/vps-deployment.md) | Deploy the full stack on a VPS (expose dbt docs + Evidence) |
 | [`decisions/architecture-decisions.md`](engineering/decisions/architecture-decisions.md) | Architecture Decision Records |
 

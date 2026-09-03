@@ -101,8 +101,7 @@ docker compose up -d evidence
 
 The Evidence report is the curated, version-controlled narrative over the
 marts. The SQL behind every chart lives in `evidence/queries/` as plain
-ClickHouse SQL, ready to be reused in Metabase (see
-[`metabase-dashboard.md`](metabase-dashboard.md)).
+ClickHouse SQL.
 
 ---
 
@@ -200,7 +199,7 @@ docker compose exec clickhouse clickhouse-client --database analytics   # SQL cl
 ├── evidence/                 # Evidence business report
 │   ├── evidence.config.yaml  # project settings
 │   ├── connection.yaml       # ClickHouse connector (env-injected creds)
-│   ├── queries/              # reusable ClickHouse SQL (Metabase-ready)
+│   ├── queries/              # reusable ClickHouse SQL
 │   └── pages/                # report + exploration pages
 ├── docker/
 │   ├── api/                  # FastAPI image

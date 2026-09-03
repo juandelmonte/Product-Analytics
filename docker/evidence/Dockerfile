@@ -2,8 +2,7 @@
 # Evidence (reporting) image
 #
 # Self-hosted Evidence serving the curated business report over the dbt marts
-# in ClickHouse. The SQL lives in `evidence/queries/` so it can also be reused
-# in Metabase.
+# in ClickHouse. The SQL lives in `evidence/queries/` as plain ClickHouse SQL.
 # ---------------------------------------------------------------------------
 FROM evidencedev/serve:latest
 
