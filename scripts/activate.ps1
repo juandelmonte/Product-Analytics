@@ -1,0 +1,125 @@
+# ===========================================================================
+# Project-scoped shortcuts for the SaaS Product Analytics Platform.
+#
+# These functions live INSIDE this project (not in your PowerShell profile),
+# so nothing leaks to other projects.
+#
+#   Load in any terminal:   . .\scripts\activate.ps1
+#   VS Code auto-loads them via .vscode/settings.json in this workspace.
+# ===========================================================================
+
+# Project root = parent of the folder that contains this script.
+$script:AnalyticsRoot = Split-Path -Parent $PSScriptRoot
+
+# ClickHouse connection settings (mirrors .env defaults; used by ch / chq).
+$script:ClickHouseUser = if ($env:CLICKHOUSE_USER) { $env:CLICKHOUSE_USER } else { 'default' }
+$script:ClickHouseDb   = if ($env:CLICKHOUSE_DB) { $env:CLICKHOUSE_DB } else { 'analytics' }
+
+# dbt -> run any dbt command inside the container (dbt only exists in Docker)
+function dbt {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose run --rm dbt @args }
+    finally { Pop-Location }
+}
+
+# ch -> open the ClickHouse client inside the running server container
+function ch {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose exec clickhouse clickhouse-client --database $script:ClickHouseDb @args }
+    finally { Pop-Location }
+}
+
+# chq -> run one SQL query against ClickHouse and print the result
+function chq($query) {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose exec clickhouse clickhouse-client --database $script:ClickHouseDb --query $query @args }
+    finally { Pop-Location }
+}
+
+# dbt-docs -> regenerate docs and serve them at http://localhost:8083
+# (NOTE: the `dbt docs serve` output says "localhost:8080" - that is the
+# CONTAINER port. The compose `dbt` service maps host 8083 -> container 8080,
+# and `--service-ports` publishes that mapping, so browse to 8083 on the host.)
+function dbt-docs {
+    Push-Location $script:AnalyticsRoot
+    try {
+        docker compose run --rm dbt docs generate
+        Write-Host "Serving dbt docs at http://localhost:8083  (Ctrl+C to stop)" -ForegroundColor Green
+        docker compose run --rm --service-ports dbt docs serve --port 8080 --host 0.0.0.0
+    }
+    finally { Pop-Location }
+}
+
+# db-up -> start PostgreSQL + ClickHouse in the background
+function db-up {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose up -d postgres clickhouse }
+    finally { Pop-Location }
+}
+
+# psql -> open psql on the operational database
+function psql {
+    Push-Location $script:AnalyticsRoot
+    try {
+        $user = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { 'saas' }
+        $db   = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { 'saas' }
+        docker compose exec postgres psql -U $user -d $db @args
+    }
+    finally { Pop-Location }
+}
+
+# api-up -> start the source API (and its Postgres dependency)
+function api-up {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose up -d api }
+    finally { Pop-Location }
+}
+
+# sim -> run a simulation command inside the api container
+function sim($command, $days) {
+    Push-Location $script:AnalyticsRoot
+    try {
+        if ($command -eq 'history') {
+            docker compose run --rm api python -m app.sim history --days $days
+        }
+        else {
+            docker compose run --rm api python -m app.sim $command
+        }
+    }
+    finally { Pop-Location }
+}
+
+# airflow-up -> start the Airflow scheduler + webserver (runs with `up` by default)
+function airflow-up {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose up -d airflow-scheduler airflow-webserver }
+    finally { Pop-Location }
+}
+
+# bi-up -> start the Evidence business report (http://localhost:3000)
+function bi-up {
+    Push-Location $script:AnalyticsRoot
+    try { docker compose up -d evidence }
+    finally { Pop-Location }
+}
+
+# reset-env -> full reset: wipe volumes, rebuild, then let the stack
+# self-bootstrap (the `bootstrap` service runs the full pipeline once).
+# Equivalent to the VPS flow: clone -> docker compose up --build -d.
+function reset-env {
+    Push-Location $script:AnalyticsRoot
+    try {
+        docker compose down -v
+        docker compose build
+        # `up` starts the whole stack; the one-time `bootstrap` service runs the
+        # pipeline (alembic -> sim history -> dlt -> dbt -> evidence grant)
+        # automatically, and airflow/evidence wait for it via depends_on.
+        docker compose up -d
+        Write-Host "Stack up. Waiting for the one-time bootstrap to complete..." -ForegroundColor Yellow
+        docker compose wait bootstrap
+        docker compose logs bootstrap | Select-Object -Last 15
+    }
+    finally { Pop-Location }
+}
+
+Write-Host "Analytics shortcuts loaded: dbt, ch, chq, dbt-docs, db-up, psql, api-up, sim, airflow-up, bi-up, reset-env" -ForegroundColor Green

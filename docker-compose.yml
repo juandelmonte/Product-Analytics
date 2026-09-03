@@ -1,0 +1,299 @@
+name: saas-analytics
+
+# SaaS Product Analytics Platform - full stack.
+# Exposed to the host only where intended: dbt docs (8083) and Evidence (3000).
+# Everything else is internal (reachable by service name, no host port).
+# The first `up` self-bootstraps the pipeline; Airflow keeps it fresh daily.
+
+x-common-env: &common-env
+  TZ: UTC
+
+services:
+  # --- Operational source-of-truth (simulated SaaS DB) --------------------
+  postgres:
+    image: postgres:${POSTGRES_VERSION:-16}
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      POSTGRES_USER: ${POSTGRES_USER:-saas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-saas}
+      POSTGRES_DB: ${POSTGRES_DB:-saas}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-saas} -d ${POSTGRES_DB:-saas}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # --- Source-system-like APIs + simulation -------------------------------
+  api:
+    build:
+      context: ./docker/api
+    image: saas/source-api:0.1
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-saas}:${POSTGRES_PASSWORD:-saas}@postgres:5432/${POSTGRES_DB:-saas}
+      SEED: ${SEED:-42}
+    volumes:
+      - ${PROJECT_ROOT:-.}/api:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  # --- Analytical warehouse (OLAP) ---------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.3}
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+    ports:
+      - "8123:8123"
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  # --- Transformation + testing + docs server (host :8083) ----------------
+  # Runs `dbt docs serve` persistently; the one-time bootstrap builds the
+  # marts and generates the catalog it serves. Invoke dbt ad-hoc via
+  # `docker compose run --rm dbt <cmd>`.
+  dbt:
+    build:
+      context: ./docker/dbt
+      args:
+        DBT_CLICKHOUSE_VERSION: ${DBT_CLICKHOUSE_VERSION:-1.10.2}
+        DBT_CORE_VERSION: ${DBT_CORE_VERSION:-1.10.23}
+    image: saas/dbt-clickhouse:${DBT_CLICKHOUSE_VERSION:-1.10.2}
+    environment:
+      <<: *common-env
+      DBT_TARGET: ${DBT_TARGET:-dev}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_DB: ${CLICKHOUSE_DB:-analytics}
+    volumes:
+      - ${PROJECT_ROOT:-.}/dbt:/app
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      # Serve docs only after the bootstrap has built the marts + catalog.
+      bootstrap:
+        condition: service_completed_successfully
+    ports:
+      - "8083:8080"
+    working_dir: /app
+    restart: unless-stopped
+    command: ["docs", "serve", "--port", "8080", "--host", "0.0.0.0"]
+
+  # --- Ingestion (dlt) - run on demand via compose run -------------------
+  dlt:
+    build:
+      context: ./docker/dlt
+    image: saas/dlt:0.1
+    environment:
+      <<: *common-env
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      # dlt uses the native TCP port + no TLS on the local dev stack.
+      CLICKHOUSE_NATIVE_PORT: "9000"
+      CLICKHOUSE_SECURE: "0"
+      DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE: ${BRONZE_DB:-bronze}
+      API_BASE_URL: http://api:8000
+    volumes:
+      - ${PROJECT_ROOT:-.}/dlt:/app
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      api:
+        condition: service_started
+    working_dir: /app
+
+  # --- One-time bootstrap: runs the full pipeline on first `up` ----------
+  # Orchestrates via the docker socket (scripts/bootstrap.sh); guarded by a
+  # marker so re-runs are no-ops. Uses the airflow image (has docker CLI).
+  bootstrap:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    user: root
+    entrypoint: ["bash", "-c"]
+    command:
+      - |
+        set -euo pipefail
+        MARKER=/bootstrap-state/.complete
+        if [ -f "$$MARKER" ]; then
+          echo "bootstrap: already complete ($$MARKER present) - nothing to do."
+          exit 0
+        fi
+        echo "bootstrap: running full pipeline initialisation..."
+        bash /workspace/scripts/bootstrap.sh
+        echo "bootstrap: done."
+        touch "$$MARKER"
+    environment:
+      <<: *common-env
+      DOCKER_HOST: unix:///var/run/docker.sock
+      COMPOSE_PROJECT_NAME: saas-analytics
+      # Host-absolute project path, so nested `docker compose` (run inside
+      # this container) resolves code mounts to real host paths.
+      PROJECT_ROOT: ${PWD}
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      BRONZE_DB: ${BRONZE_DB:-bronze}
+      SEED: ${SEED:-42}
+      SIM_HISTORY_DAYS: ${SIM_HISTORY_DAYS:-720}
+      EVIDENCE_CLICKHOUSE_PASSWORD: ${EVIDENCE_CLICKHOUSE_PASSWORD:-evidence}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+      - bootstrap-state:/bootstrap-state
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      api:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  # --- Evidence - curated BI report over the dbt marts (host :3000) ------
+  evidence:
+    build:
+      context: ./evidence
+      dockerfile: ../docker/evidence/Dockerfile
+    image: saas/evidence:0.1
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      CLICKHOUSE_HOST: clickhouse
+      CLICKHOUSE_PORT: "8123"
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      # Read-only user created by the bootstrap; self-hosted Evidence needs a
+      # non-empty credential, so auth is disabled for this demo.
+      EVIDENCE_CLICKHOUSE_USER: ${EVIDENCE_CLICKHOUSE_USER:-evidence}
+      EVIDENCE_CLICKHOUSE_PASSWORD: ${EVIDENCE_CLICKHOUSE_PASSWORD:-evidence}
+      EVIDENCE_AUTH_DISABLED: "true"
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+      # The marts + evidence user only exist after the one-time bootstrap.
+      bootstrap:
+        condition: service_completed_successfully
+
+  # --- Airflow - daily orchestration (not exposed to the host) -----------
+  airflow-postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - airflow-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow -d airflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+
+  airflow-webserver:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      AIRFLOW__WEBSERVER__SECRET_KEY: "dev-secret-not-for-prod"
+      # Host-absolute project path for the DAGs' nested docker compose calls.
+      PROJECT_ROOT: ${PWD}
+    volumes:
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      # Daily runs need a populated warehouse (bootstrap must finish first).
+      bootstrap:
+        condition: service_completed_successfully
+    command: ["webserver"]
+
+  airflow-scheduler:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    restart: unless-stopped
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
+      # Host-absolute project path for the DAGs' nested docker compose calls.
+      PROJECT_ROOT: ${PWD}
+    volumes:
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}:/workspace
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+      airflow-init:
+        condition: service_completed_successfully
+      # Daily runs need a populated warehouse (bootstrap must finish first).
+      bootstrap:
+        condition: service_completed_successfully
+    command: ["scheduler"]
+
+  airflow-init:
+    build:
+      context: ./docker/airflow
+    image: saas/airflow:2.9.3
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
+      AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    volumes:
+      - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
+    depends_on:
+      airflow-postgres:
+        condition: service_healthy
+    # Airflow 2.9.3 requires `db init` (not just `db migrate`) before the
+    # webserver/scheduler can start.
+    command: ["db", "init"]
+    restart: "no"
+
+volumes:
+  postgres-data:
+  clickhouse-data:
+  airflow-postgres-data:
+  bootstrap-state:

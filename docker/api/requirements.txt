@@ -1,0 +1,8 @@
+# Python dependencies for the FastAPI source-API service.
+# Floors for now; tightened to exact pins in the hardening phase.
+fastapi>=0.115
+uvicorn[standard]>=0.30
+sqlalchemy>=2.0
+psycopg[binary]>=3.2
+alembic>=1.13
+pydantic-settings>=2.2

@@ -1,0 +1,48 @@
+version: 2
+
+models:
+  - name: int_identity_mapping
+    description: Canonical identity mapping (product account_id ↔ CRM company_id ↔ billing customer_id).
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+
+  - name: int_user_activity
+    description: Daily user activity (activity events only).
+    columns:
+      - name: user_id
+        tests: [not_null]
+      - name: activity_date
+        tests: [not_null]
+
+  - name: int_user_activation
+    description: Per-account activation signals and activation flag.
+    columns:
+      - name: account_id
+        tests: [unique, not_null]
+      - name: is_activated
+        tests: [not_null]
+
+  - name: int_feature_usage
+    description: Weekly feature usage per account.
+    columns:
+      - name: account_id
+        tests: [not_null]
+      - name: feature_code
+        tests: [not_null]
+
+  - name: int_subscription_history
+    description: Subscription periods joined to prices and identity (append-only).
+    columns:
+      - name: subscription_id
+        tests: [not_null]
+      - name: customer_id
+        tests: [not_null]
+
+  - name: int_account_usage
+    description: Monthly product usage intensity per account.
+    columns:
+      - name: account_id
+        tests: [not_null]
+      - name: usage_month
+        tests: [not_null]

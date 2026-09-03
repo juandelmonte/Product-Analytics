@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------------
+# dbt profile.
+# Connects to the ClickHouse server (the `clickhouse` compose service) over
+# HTTP. Connection details are injected via environment variables set in
+# docker-compose.yml, so this file works unchanged from any machine.
+#
+# `schema` maps to a ClickHouse database - the adapter uses `schema.table`
+# (ClickHouse has no three-part database.schema.table hierarchy).
+# ---------------------------------------------------------------------------
+analytics:
+  target: "{{ env_var('DBT_TARGET', 'dev') }}"
+  outputs:
+    dev:
+      type: clickhouse
+      driver: http
+      host: "{{ env_var('CLICKHOUSE_HOST', 'clickhouse') }}"
+      port: "{{ env_var('CLICKHOUSE_PORT', '8123') | int }}"
+      user: "{{ env_var('CLICKHOUSE_USER', 'default') }}"
+      password: "{{ env_var('CLICKHOUSE_PASSWORD', '') }}"
+      schema: "{{ env_var('CLICKHOUSE_DB', 'analytics') }}"
+      threads: 4
+      connect_timeout: 10
+      send_receive_timeout: 300
+      # Keep runs reproducible: retry transient ClickHouse errors once.
+      retries: 1

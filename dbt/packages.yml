@@ -1,0 +1,5 @@
+packages:
+  # Leave empty for now - add dbt packages (e.g. dbt_utils, dbt_expectations)
+  # here as your interview exercises grow, then run `dbt deps`.
+  []
+
