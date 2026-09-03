@@ -13,7 +13,7 @@ questions product and commercial teams actually ask.
 | **What it is** | A complete analytics stack: source systems → ingestion → warehouse → transformation → semantic layer → BI |
 | **What it proves** | I can take a business question, trace it to source data, and deliver a *trusted* answer — handling real-world messiness (late/duplicate events, 3 identity namespaces, mutable CRM, schema drift) along the way |
 | **Stack** | Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence · Metabase |
-| **Verification** | 25 dbt models + 84 data tests, **109/109 passing** |
+| **Verification** | 30 dbt models + 100 data tests, **all passing** |
 | **One-liner** | `docker compose up` → a working analytics platform with a live BI dashboard |
 
 ---
@@ -149,36 +149,24 @@ analytics engineering that turns that data into trusted answers. See
 | Deploy on a VPS (expose dbt docs + Evidence) | [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md) |
 | Run it yourself | [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md) |
 
-## Quick start (self-bootstrapping)
+## Quick start
 
-The stack **bootstraps itself**: on a fresh clone (or after `down -v`),
-`docker compose up --build -d` runs the entire pipeline automatically via the
-one-time `bootstrap` service — 24 months of simulated history → dlt ingest →
-dbt build (models + tests) → Evidence user — and then Airflow keeps the marts
-fresh on a daily schedule.
+Everything runs from Docker — no local setup beyond Docker itself:
 
-```powershell
-# 1. Build + start everything (runs the full pipeline automatically)
+```bash
+# Build + start the full stack. The first run bootstraps the pipeline
+# automatically (simulated history → ingestion → transformation → BI).
 docker compose up --build -d
 
-# 2. Watch the one-time bootstrap until it completes
-docker compose logs -f bootstrap
-
-# 3. Open the curated report
-#    → http://localhost:3000   (Evidence)
+# → Evidence report   http://localhost:3000
+# → dbt docs          http://localhost:8083
 ```
 
-> **One-command reset**: `. .\scripts\activate.ps1` then `reset-env` (or
-> `make reset-environment`) = wipe volumes + rebuild + re-bootstrap.
->
-> **Windows dev note**: the automatic `bootstrap` service + Airflow DAGs
-> orchestrate via the mounted docker socket, which resolves code bind-mounts
-> correctly on **Linux** (the VPS target). On Docker Desktop (Windows), run the
-> same chain from the host shell with `reset-env` instead.
-
-Full developer instructions (Airflow, daily advance, shortcuts, VPS deploy)
-live in [`docs/engineering/getting-started.md`](docs/engineering/getting-started.md)
-and [`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md).
+Airflow then keeps the marts fresh on a daily schedule. See
+[`docs/engineering/getting-started.md`](docs/engineering/getting-started.md)
+for daily operations, and
+[`docs/engineering/vps-deployment.md`](docs/engineering/vps-deployment.md)
+to deploy it on a server.
 
 ---
 

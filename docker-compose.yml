@@ -1,29 +1,15 @@
 name: saas-analytics
 
-# ---------------------------------------------------------------------------
-# SaaS Product Analytics Platform — Docker Compose
-#
-# Full stack. Only TWO services are exposed to the host (and thus to the
-# internet on the VPS): dbt docs (8083) and Evidence (3000). Everything else
-# lives on the internal Docker network only — no host port — which removes
-# most port-collision risk on a shared VPS.
-#
-# Host-exposed ports (the only ones to open in the firewall):
-#   8083 -> dbt docs    (renumbered from 8080, which is taken on the VPS)
-#   3000 -> Evidence    (unchanged, free on the VPS)
-#
-# Airflow runs by default (no profile) so the daily_pipeline DAG keeps the
-# marts fresh: advance simulation -> dlt incremental -> dbt build -> tests.
-# ---------------------------------------------------------------------------
+# SaaS Product Analytics Platform — full stack.
+# Exposed to the host only where intended: dbt docs (8083) and Evidence (3000).
+# Everything else is internal (reachable by service name, no host port).
+# The first `up` self-bootstraps the pipeline; Airflow keeps it fresh daily.
 
 x-common-env: &common-env
   TZ: UTC
 
 services:
-  # -------------------------------------------------------------------------
-  # PostgreSQL — operational state (the simulated SaaS source-of-truth)
-  # INTERNAL ONLY (no host port). Reachable by other services as postgres:5432.
-  # -------------------------------------------------------------------------
+  # --- Operational source-of-truth (simulated SaaS DB) --------------------
   postgres:
     image: postgres:${POSTGRES_VERSION:-16}
     restart: unless-stopped
@@ -41,10 +27,7 @@ services:
       retries: 20
       start_period: 10s
 
-  # -------------------------------------------------------------------------
-  # FastAPI — source-system-like APIs + simulation CLI
-  # INTERNAL ONLY (no host port). Reachable by dlt as api:8000.
-  # -------------------------------------------------------------------------
+  # --- Source-system-like APIs + simulation -------------------------------
   api:
     build:
       context: ./docker/api
@@ -61,10 +44,7 @@ services:
         condition: service_healthy
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
-  # -------------------------------------------------------------------------
-  # ClickHouse — OLAP analytical warehouse
-  # INTERNAL ONLY (no host port). Reachable by dbt/dlt/evidence as clickhouse:8123.
-  # -------------------------------------------------------------------------
+  # --- Analytical warehouse (OLAP) ---------------------------------------
   clickhouse:
     image: clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-25.3}
     restart: unless-stopped
@@ -77,7 +57,6 @@ services:
     volumes:
       - clickhouse-data:/var/lib/clickhouse
     ports:
-      # HTTP interface (dbt, dlt, clickhouse-client --host, browser playground)
       - "8123:8123"
     ulimits:
       nofile:
@@ -90,18 +69,10 @@ services:
       retries: 20
       start_period: 10s
 
-  # -------------------------------------------------------------------------
-  # dbt — transformation + testing + persistent docs server.
-  # EXTERNAL: serves dbt docs on host port 8083 (container 8080).
-  #
-  # On `docker compose up`, this service runs `dbt docs serve` (a long-running
-  # HTTP server) so the docs are reachable at :8083 without a manual step. It
-  # waits for the one-time `bootstrap` to finish first — the bootstrap runs
-  # `dbt build` then `dbt docs generate`, which produce the manifest/catalog
-  # this server reads. For ad-hoc transformation/testing, invoke dbt explicitly
-  # via `docker compose run --rm dbt <cmd>` (never auto-runs `dbt build`, which
-  # would race the ingest on a cold start).
-  # -------------------------------------------------------------------------
+  # --- Transformation + testing + docs server (host :8083) ----------------
+  # Runs `dbt docs serve` persistently; the one-time bootstrap builds the
+  # marts and generates the catalog it serves. Invoke dbt ad-hoc via
+  # `docker compose run --rm dbt <cmd>`.
   dbt:
     build:
       context: ./docker/dbt
@@ -122,8 +93,7 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
-      # Serve docs only AFTER the bootstrap has built the marts and generated
-      # the catalog — otherwise docs serve would start against empty data.
+      # Serve docs only after the bootstrap has built the marts + catalog.
       bootstrap:
         condition: service_completed_successfully
     ports:
@@ -132,11 +102,7 @@ services:
     restart: unless-stopped
     command: ["docs", "serve", "--port", "8080", "--host", "0.0.0.0"]
 
-  # -------------------------------------------------------------------------
-  # dlt — ingestion pipelines (run on demand; no long-running process)
-  # INTERNAL ONLY (no host port). Orchestrated by the bootstrap service and
-  # Airflow via `docker compose run --rm --no-deps`.
-  # -------------------------------------------------------------------------
+  # --- Ingestion (dlt) — run on demand via compose run -------------------
   dlt:
     build:
       context: ./docker/dlt
@@ -147,7 +113,7 @@ services:
       CLICKHOUSE_PORT: "8123"
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      # dlt native client uses the TCP port + no TLS on the local dev stack
+      # dlt uses the native TCP port + no TLS on the local dev stack.
       CLICKHOUSE_NATIVE_PORT: "9000"
       CLICKHOUSE_SECURE: "0"
       DESTINATION__CLICKHOUSE__CREDENTIALS__DATABASE: ${BRONZE_DB:-bronze}
@@ -161,28 +127,9 @@ services:
         condition: service_started
     working_dir: /app
 
-  # -------------------------------------------------------------------------
-  # bootstrap — ONE-TIME full-pipeline initialisation.
-  # Runs the complete chain on a cold start (empty volumes): operational
-  # schema -> 24 months of simulated history -> dlt ingest -> dbt build ->
-  # Evidence user + grant. It shells out to `docker compose run --rm` against
-  # the mounted docker socket (like Airflow), so it works even though dlt/dbt
-  # have no long-running process.
-  #
-  # Reuses the saas/airflow image because it already bundles the Docker CLI +
-  # compose plugin + bash (it is the orchestration image). The `build:` block
-  # is REQUIRED (not just `image:`) so a fresh clone / VPS `up --build` builds
-  # the airflow image locally instead of trying to PULL `saas/airflow` from a
-  # registry (where it does not exist). Idempotent + guarded:
-  # it writes a marker file to the `bootstrap-state` volume when the chain
-  # completes, so a re-run of `compose up` after a host reboot or redeploy sees
-  # the marker and becomes a no-op. To force a full rebuild:
-  #   docker compose down -v && docker compose up --build
-  #
-  # The service exits 0 when done (restart: "no"). `docker compose up` runs it
-  # once in dependency order then leaves it exited; `docker compose logs
-  # bootstrap` shows the chain output.
-  # -------------------------------------------------------------------------
+  # --- One-time bootstrap: runs the full pipeline on first `up` ----------
+  # Orchestrates via the docker socket (scripts/bootstrap.sh); guarded by a
+  # marker so re-runs are no-ops. Uses the airflow image (has docker CLI).
   bootstrap:
     build:
       context: ./docker/airflow
@@ -205,10 +152,8 @@ services:
       <<: *common-env
       DOCKER_HOST: unix:///var/run/docker.sock
       COMPOSE_PROJECT_NAME: saas-analytics
-      # Host-absolute path of the project. The nested `docker compose run`
-      # calls re-resolve ${PROJECT_ROOT}/<svc> bind mounts against this so the
-      # host daemon mounts the REAL host path (a relative mount would resolve
-      # to /workspace/<svc>, which does not exist on the host -> empty /app).
+      # Host-absolute project path, so nested `docker compose` (run inside
+      # this container) resolves code mounts to real host paths.
       PROJECT_ROOT: ${PWD}
       CLICKHOUSE_HOST: clickhouse
       CLICKHOUSE_PORT: "8123"
@@ -231,10 +176,7 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # -------------------------------------------------------------------------
-  # Evidence — curated business report over the dbt marts
-  # EXTERNAL: host port 3000.
-  # -------------------------------------------------------------------------
+  # --- Evidence — curated BI report over the dbt marts (host :3000) ------
   evidence:
     build:
       context: ./evidence
@@ -247,10 +189,10 @@ services:
       CLICKHOUSE_PORT: "8123"
       CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
       CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
-      # Dedicated read-only user for Evidence (see scripts/activate.ps1).
+      # Read-only user created by the bootstrap; self-hosted Evidence needs a
+      # non-empty credential, so auth is disabled for this demo.
       EVIDENCE_CLICKHOUSE_USER: ${EVIDENCE_CLICKHOUSE_USER:-evidence}
       EVIDENCE_CLICKHOUSE_PASSWORD: ${EVIDENCE_CLICKHOUSE_PASSWORD:-evidence}
-      # Self-hosted Evidence requires Basic Auth unless auth is disabled.
       EVIDENCE_AUTH_DISABLED: "true"
       PORT: "3000"
     ports:
@@ -258,17 +200,11 @@ services:
     depends_on:
       clickhouse:
         condition: service_healthy
-      # Evidence queries the marts as the dedicated `evidence` user — both only
-      # exist after the one-time bootstrap (dbt build + grant). Starting it any
-      # earlier means it points at empty/nonexistent data.
+      # The marts + evidence user only exist after the one-time bootstrap.
       bootstrap:
         condition: service_completed_successfully
 
-  # -------------------------------------------------------------------------
-  # Airflow — orchestration (daily refresh). Runs by default (no profile).
-  # INTERNAL ONLY: the webserver is not exposed to the host.
-  # The scheduler runs daily_pipeline: sim day -> dlt ingest -> dbt build -> test.
-  # -------------------------------------------------------------------------
+  # --- Airflow — daily orchestration (not exposed to the host) -----------
   airflow-postgres:
     image: postgres:16
     restart: unless-stopped
@@ -296,8 +232,7 @@ services:
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
       AIRFLOW__WEBSERVER__SECRET_KEY: "dev-secret-not-for-prod"
-      # Host-absolute project path for the DAGs' nested `docker compose run`
-      # calls (see bootstrap service comment).
+      # Host-absolute project path for the DAGs' nested docker compose calls.
       PROJECT_ROOT: ${PWD}
     volumes:
       - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
@@ -308,9 +243,7 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-      # Start the scheduler only AFTER the one-time bootstrap has populated the
-      # warehouse — otherwise daily_pipeline would race (and fail on) an empty
-      # Postgres/ClickHouse on a cold `up`.
+      # Daily runs need a populated warehouse (bootstrap must finish first).
       bootstrap:
         condition: service_completed_successfully
     command: ["webserver"]
@@ -325,8 +258,7 @@ services:
       AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres:5432/airflow
       AIRFLOW__CORE__LOAD_EXAMPLES: "false"
       AIRFLOW__CORE__DAGS_FOLDER: /opt/airflow/dags
-      # Host-absolute project path for the DAGs' nested `docker compose run`
-      # calls (see bootstrap service comment).
+      # Host-absolute project path for the DAGs' nested docker compose calls.
       PROJECT_ROOT: ${PWD}
     volumes:
       - ${PROJECT_ROOT:-.}/airflow/dags:/opt/airflow/dags
@@ -337,9 +269,7 @@ services:
         condition: service_healthy
       airflow-init:
         condition: service_completed_successfully
-      # Start the scheduler only AFTER the one-time bootstrap has populated the
-      # warehouse — otherwise daily_pipeline would race (and fail on) an empty
-      # Postgres/ClickHouse on a cold `up`.
+      # Daily runs need a populated warehouse (bootstrap must finish first).
       bootstrap:
         condition: service_completed_successfully
     command: ["scheduler"]
@@ -357,9 +287,8 @@ services:
     depends_on:
       airflow-postgres:
         condition: service_healthy
-    # Airflow 2.9.3 requires `db init` (creates the FAB/webserver tables +
-    # admin user), NOT just `db migrate`. Without it the webserver exits with
-    # "You need to initialize the database".
+    # Airflow 2.9.3 requires `db init` (not just `db migrate`) before the
+    # webserver/scheduler can start.
     command: ["db", "init"]
     restart: "no"
 
