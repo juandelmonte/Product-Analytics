@@ -19,7 +19,7 @@ intentionally shaped like real source-system exports.
   pagination is stable even when ties occur.
 - **Timestamps**: every record carries `source_updated_at` (when the source
   record last changed) and events also carry `event_at` (when the business
-  thing happened) and `ingested_at` (when our API served it — set by dlt on
+  thing happened) and `ingested_at` (when our API served it - set by dlt on
   receipt).
 
 ## Response envelope
@@ -33,7 +33,7 @@ intentionally shaped like real source-system exports.
 
 ---
 
-## 1. Product events — `GET /api/product-events`
+## 1. Product events - `GET /api/product-events`
 
 Mixpanel-like event export.
 
@@ -50,9 +50,9 @@ Mixpanel-like event export.
 - Query params: `from`, `to` (on `event_at`), `updated_since` (on
   `source_updated_at`), `limit`, `cursor`.
 - Duplicates: the same `event_id` may appear more than once across pages/runs
-  (client retries) — downstream dedup is required.
+  (client retries) - downstream dedup is required.
 
-## 2. CRM contacts — `GET /api/crm/contacts`
+## 2. CRM contacts - `GET /api/crm/contacts`
 
 HubSpot-like contact objects.
 
@@ -69,7 +69,7 @@ HubSpot-like contact objects.
 - Mutability: fields (and `company_id`) can change; each change bumps
   `source_updated_at`.
 
-## 3. CRM companies — `GET /api/crm/companies`
+## 3. CRM companies - `GET /api/crm/companies`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -84,7 +84,7 @@ HubSpot-like contact objects.
 
 - Query params: `updated_since`, `limit`, `cursor`.
 
-## 4. CRM deals — `GET /api/crm/deals`
+## 4. CRM deals - `GET /api/crm/deals`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -97,7 +97,7 @@ HubSpot-like contact objects.
 
 - Query params: `updated_since`, `limit`, `cursor`.
 
-## 5. Billing customers — `GET /api/billing/customers`
+## 5. Billing customers - `GET /api/billing/customers`
 
 Stripe-like customers.
 
@@ -110,7 +110,7 @@ Stripe-like customers.
 
 - Query params: `updated_since`, `limit`, `cursor`.
 
-## 6. Billing prices — `GET /api/billing/prices`
+## 6. Billing prices - `GET /api/billing/prices`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -124,7 +124,7 @@ Stripe-like customers.
 
 - Query params: `updated_since`, `limit`, `cursor`.
 
-## 7. Billing subscriptions — `GET /api/billing/subscriptions`
+## 7. Billing subscriptions - `GET /api/billing/subscriptions`
 
 | Field | Type | Notes |
 |-------|------|-------|
@@ -143,7 +143,7 @@ Stripe-like customers.
 - Future-effective changes: `effective_at > recorded_at` must **not** be treated
   as current until `effective_at <= run date`.
 
-## 8. Billing invoices — `GET /api/billing/invoices`
+## 8. Billing invoices - `GET /api/billing/invoices`
 
 | Field | Type | Notes |
 |-------|------|-------|

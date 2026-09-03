@@ -145,9 +145,9 @@ COUNTRY_STICKINESS = {
 def _segment_modifiers(country: str, industry: str, size: str) -> dict:
     """Aggregate per-account multipliers.
 
-    fit        — scales onboarding completion + paid conversion (higher = better)
-    expand     — scales monthly expansion likelihood
-    stickiness — scales retention: higher = LESS dormancy and churn
+    fit        - scales onboarding completion + paid conversion (higher = better)
+    expand     - scales monthly expansion likelihood
+    stickiness - scales retention: higher = LESS dormancy and churn
     """
     return {
         "fit":        COUNTRY_FIT.get(country, 1.0) * INDUSTRY_FIT.get(industry, 1.0) * SIZE_FIT.get(size, 1.0),
@@ -175,7 +175,7 @@ class Simulator:
     def _load_state(self) -> None:
         st = self.session.get(SimState, 1)
         if st is None:
-            raise RuntimeError("sim_state missing — call init_history first")
+            raise RuntimeError("sim_state missing - call init_history first")
         self.start_date = st.start_date
         self.sim_date = st.sim_date
         self.day_index = st.day_index
@@ -301,7 +301,7 @@ class Simulator:
         """Insert a late-arriving product event (event_at is in the past).
 
         `source_updated_at` is the actual write time (now), NOT the scheduled
-        delivery date — so the incremental cursor stays monotonic and late
+        delivery date - so the incremental cursor stays monotonic and late
         events are never skipped.
         """
         p = dict(payload)

@@ -4,7 +4,7 @@
 # scripts/activate.ps1 or Makefile) rather than the empty-password `default`
 # user. Evidence requires a non-empty password (or access token).
 #
-# These are local demo credentials (see .env) — no real secrets.
+# These are local demo credentials (see .env) - no real secrets.
 type: clickhouse
 host: clickhouse
 port: 8123

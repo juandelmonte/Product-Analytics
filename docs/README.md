@@ -14,7 +14,7 @@ point by **who you are**, then follow the pointers.
 
 ---
 
-## business/ — the business context
+## business/ - the business context
 
 The *why* of the project. These two documents are the foundation of the whole
 solution and the first thing any reader should see after the README.
@@ -24,12 +24,12 @@ solution and the first thing any reader should see after the README.
 | [`business_case.md`](business/business_case.md) | The SaaS product, its lifecycle, and the locked activation definition |
 | [`business_questions.md`](business/business_questions.md) | The prioritized business questions the platform answers |
 
-These belong to the **business**, not the source-system setup — the source
+These belong to the **business**, not the source-system setup - the source
 systems exist only so the analytics solution has realistic data to work with.
 
 ---
 
-## analytics/ — the analytical model
+## analytics/ - the analytical model
 
 The *what the data means* layer. This is the contract between the warehouse and
 the BI layer, and the reference for anyone consuming the marts or the Evidence
@@ -46,7 +46,7 @@ report.
 
 ---
 
-## engineering/ — how it is built
+## engineering/ - how it is built
 
 The *how* for developers and analysts. Architecture, design process, and the
 hardened implementation details.
@@ -67,11 +67,11 @@ hardened implementation details.
 
 ---
 
-## simulation/ — the source systems
+## simulation/ - the source systems
 
 The operational systems the analytics platform consumes. They were modelled
-after **Mixpanel, HubSpot, and Stripe** — their identifiers, update semantics,
-and failure modes researched first, then reproduced — so the analytics solve
+after **Mixpanel, HubSpot, and Stripe** - their identifiers, update semantics,
+and failure modes researched first, then reproduced - so the analytics solve
 **realistic** problems (late events, duplicates, three identifier namespaces)
 rather than clean toy data. This is the *input* to the analytics solution, kept
 deliberately separate from it.

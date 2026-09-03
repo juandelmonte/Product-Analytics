@@ -1,4 +1,4 @@
-# Data Quality Validation — Results
+# Data Quality Validation - Results
 
 Each of the nine intentional data-quality scenarios was run through the full
 chain (source → ingestion → transformation → detection → correction →

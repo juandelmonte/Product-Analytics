@@ -1,6 +1,6 @@
 -- stg_billing_prices.sql
 -- Grain: one row per price (merge-disposed).
--- Responsibility: schema evolution — coalesce plan_code from plan, standardise
+-- Responsibility: schema evolution - coalesce plan_code from plan, standardise
 -- the billing frequency.
 
 select

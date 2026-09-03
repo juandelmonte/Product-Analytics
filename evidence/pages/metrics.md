@@ -7,7 +7,7 @@ sidebar_position: 4
 
 This page links each metric to its definition in
 [`docs/analytics/metric_dictionary.md`](/docs/analytics/metric_dictionary.md).
-The metric dictionary is the **single source of truth** for definitions — every
+The metric dictionary is the **single source of truth** for definitions - every
 report page reads the same mart tables and references the same definitions.
 
 | Metric | Mart source | Dictionary § |

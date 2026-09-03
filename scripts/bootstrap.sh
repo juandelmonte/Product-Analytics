@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ===========================================================================
-# One-time platform bootstrap — runs the FULL pipeline from an empty state.
+# One-time platform bootstrap - runs the FULL pipeline from an empty state.
 #
 #   operational schema (sim reset = create_all from models) -> 24 months of
 #   simulated history (sim) -> dlt ingest into ClickHouse bronze -> dbt build
@@ -9,7 +9,7 @@
 # Invoked by the `bootstrap` compose service (docker-compose.yml) on a cold
 # `docker compose up --build`, with the repo mounted at /workspace and the
 # host docker socket at /var/run/docker.sock. It can also be run by hand from
-# a host shell (make reset-environment) — the compose invocation below is
+# a host shell (make reset-environment) - the compose invocation below is
 # explicit so it works from any directory / inside any container.
 #
 # Idempotency:
@@ -59,14 +59,14 @@ done
 
 # --- 1+2. Operational schema + 24 months of deterministic history -----------
 # The SQLAlchemy models are the source of truth for the schema. `sim reset`
-# drops + recreates from Base.metadata (create_all) — the validated path the
+# drops + recreates from Base.metadata (create_all) - the validated path the
 # project's reset flow uses (alembic's surrogate-id migrations are incomplete:
 # they add `id` without a backing sequence, which breaks inserts).
 #
 # Idempotency: if sim_state already exists the operational DB is already
 # initialised, so we skip the destructive reset+regen (a completed bootstrap is
 # a no-op). A re-run after a PARTIAL failure (no marker yet) resets and
-# regenerates deterministically — the desired recovery for a cold start.
+# regenerates deterministically - the desired recovery for a cold start.
 # --no-deps: never touch already-running sibling containers (avoids the
 # recreate cascade that broke an earlier bootstrap attempt).
 log "Checking simulation state..."
@@ -74,7 +74,7 @@ SIM_STATE=$("${DC[@]}" exec -T api python -c \
   "from app.db import SessionLocal; from app.models import SimState; print(1 if SessionLocal().get(SimState,1) else 0)" 2>/dev/null || echo 0)
 
 if [ "$SIM_STATE" = "1" ]; then
-  echo "Operational schema + simulation already initialised — skipping (idempotent)."
+  echo "Operational schema + simulation already initialised - skipping (idempotent)."
 else
   log "Resetting operational schema (sim reset = create_all from models)..."
   "${DC[@]}" run --rm --no-deps api python -m app.sim reset
@@ -83,7 +83,7 @@ else
 fi
 
 # --- 3. ClickHouse analytical databases --------------------------------------
-# dbt-clickhouse does NOT auto-create databases — create them up front.
+# dbt-clickhouse does NOT auto-create databases - create them up front.
 log "Creating ClickHouse databases (bronze/staging/core/marts)..."
 chq "CREATE DATABASE IF NOT EXISTS bronze; CREATE DATABASE IF NOT EXISTS staging; CREATE DATABASE IF NOT EXISTS core; CREATE DATABASE IF NOT EXISTS marts"
 

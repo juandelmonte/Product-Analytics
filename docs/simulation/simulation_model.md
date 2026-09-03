@@ -33,7 +33,7 @@ advance_day():
 | Population | How it is produced |
 |------------|--------------------|
 | Activated users | ~70% of new accounts complete the 5-step activation flow (progressive per-step dropout: workspace 98% → project 91% → invite 94% → task 93% → completed 90%) |
-| Failed onboarding | the remainder — accounts that drop at any funnel step, most commonly before the first project |
+| Failed onboarding | the remainder - accounts that drop at any funnel step, most commonly before the first project |
 | Highly engaged | activated accounts with high daily event counts |
 | Low engagement | activated accounts with few/no daily events |
 | Free/trial users | ~60% of accounts start on `free`, the rest on `trial` (`P_FREE = 0.60`) |
@@ -45,7 +45,7 @@ advance_day():
 
 ## Segment behaviour
 
-Account attributes are **not** cosmetic — they drive behaviour, so dimensional
+Account attributes are **not** cosmetic - they drive behaviour, so dimensional
 slices of the marts are non-uniform (realistic). Each account's `country`,
 `industry`, and `company_size` scale the global probabilities:
 
@@ -56,7 +56,7 @@ slices of the marts are non-uniform (realistic). Each account's `country`,
 | `stickiness` (retention) | churn + dormancy | higher for Finance / Healthcare / Education, larger, CA/GB |
 
 Concretely: a `1000+` SaaS account in the US converts and expands far more and
-churns less than a `1-10` Media account in CA — which is what makes the
+churns less than a `1-10` Media account in CA - which is what makes the
 activation-by-country/industry/size and MRR-by-size analyses interesting rather
 than flat.
 

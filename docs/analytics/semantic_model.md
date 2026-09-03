@@ -17,10 +17,10 @@ re-embedded into every fact.
 | Plan | `dim_plans` | `price_id` / `plan_code` | no (catalog) | billing |
 | Feature | `dim_features` | `feature_code` | static | product (derived) |
 | Date | `dim_dates` | `day_date` | no (calendar) | derived |
-| User | `user_id` | — | (not materialised; only as event attribute) | product |
-| Workspace | `workspace_id` | — | no | product |
-| Project | `project_id` | — | no | product |
-| Subscription | `subscription_id` | — | append-only history | billing |
+| User | `user_id` | - | (not materialised; only as event attribute) | product |
+| Workspace | `workspace_id` | - | no | product |
+| Project | `project_id` | - | no | product |
+| Subscription | `subscription_id` | - | append-only history | billing |
 
 `User`, `Workspace`, `Project`, and `Subscription` are not materialised as
 separate dimension tables: their descriptive attributes live on the fact rows
@@ -82,9 +82,9 @@ erDiagram
 Every fact carries three distinct timestamps where applicable, and marts are
 explicit about which one a measure uses:
 
-- `event_at` — when the business thing happened (metric attribution).
-- `effective_at` — when a state (plan, seat count) becomes true (SCD / MRR).
-- `ingested_at` — when the row reached the warehouse (diagnostics only).
+- `event_at` - when the business thing happened (metric attribution).
+- `effective_at` - when a state (plan, seat count) becomes true (SCD / MRR).
+- `ingested_at` - when the row reached the warehouse (diagnostics only).
 
 ## Grain rule
 

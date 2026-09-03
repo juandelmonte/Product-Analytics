@@ -1,7 +1,7 @@
 # Orchestration Design
 
 Airflow owns **orchestration only**. No business logic, ingestion logic, or
-transformation logic lives in Airflow — each step shells out to the service that
+transformation logic lives in Airflow - each step shells out to the service that
 owns that concern.
 
 ## Separation of concerns

@@ -27,7 +27,7 @@ Expected analytical result**.
 - **Treatment**: analytics always attribute to `event_at`; ingestion diagnostics
   use `ingested_at`. Incremental dlt must cursor on `source_updated_at`, not
   `event_at`, so late events are not skipped.
-- **Test**: `assert_late_events_backfilled` — a late event lands in the correct
+- **Test**: `assert_late_events_backfilled` - a late event lands in the correct
   day bucket in marts.
 - **Expected result**: activation/retention for a past day updates after the
   late event arrives.
@@ -39,7 +39,7 @@ Expected analytical result**.
 - **Detection**: `count(event_id) > 1` in bronze.
 - **Treatment**: deduplicate in dbt staging on `event_id` (keep first by
   `source_updated_at`).
-- **Test**: `assert_no_duplicate_events` — `fct_product_events` has unique
+- **Test**: `assert_no_duplicate_events` - `fct_product_events` has unique
   `event_id`.
 - **Expected result**: metric counts are not inflated by retries.
 
@@ -51,7 +51,7 @@ Expected analytical result**.
   `source_updated_at`.
 - **Treatment**: SCD2 in dbt (keep the current value for point-in-time views;
   preserve history where required).
-- **Test**: `assert_lifecycle_transition` — a company that moved to `churned`
+- **Test**: `assert_lifecycle_transition` - a company that moved to `churned`
   is counted as churned, not still `customer`.
 - **Expected result**: churn/segmentation reflects the latest values.
 
@@ -112,6 +112,6 @@ Expected analytical result**.
 - **Detection**: columns present only for some rows.
 - **Treatment**: dlt preserves unknown columns; dbt staging coalesces
   `plan_code = coalesce(plan_code, standardise(plan))`.
-- **Test**: `assert_plan_code_populated` — every price has a canonical
+- **Test**: `assert_plan_code_populated` - every price has a canonical
   `plan_code` regardless of era.
 - **Expected result**: MRR and adoption are unaffected by the schema change.

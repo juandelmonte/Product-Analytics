@@ -1,7 +1,7 @@
 # Source Research
 
 Concepts and behaviours extracted from the official docs of Mixpanel, HubSpot,
-and Stripe — **only** what the simulation needs to mimic. We do not reproduce
+and Stripe - **only** what the simulation needs to mimic. We do not reproduce
 their APIs; we model the structural ideas that make ingestion realistic.
 
 > Sources consulted for concepts: Mixpanel Ingestion API / Identity Management /
@@ -11,7 +11,7 @@ their APIs; we model the structural ideas that make ingestion realistic.
 
 ---
 
-## 1. Mixpanel — product analytics
+## 1. Mixpanel - product analytics
 
 **Concepts adopted:**
 
@@ -32,7 +32,7 @@ their APIs; we model the structural ideas that make ingestion realistic.
   stable `event_id`.
 - `distinct_id` can change when a user is identified → **identity changes**.
 
-## 2. HubSpot — CRM
+## 2. HubSpot - CRM
 
 **Concepts adopted:**
 
@@ -52,7 +52,7 @@ their APIs; we model the structural ideas that make ingestion realistic.
 - A changed record may only **become available days later** (sync lag).
 - A contact may **initially have no company** association, and gain one later.
 
-## 3. Stripe — billing
+## 3. Stripe - billing
 
 **Concepts adopted:**
 
@@ -80,13 +80,13 @@ their APIs; we model the structural ideas that make ingestion realistic.
   canonical identity model (see `../analytics/identity_resolution.md`).
 - All three expose **incremental extraction** by an "updated since" cursor.
 - All three have distinct notions of **event time vs update time vs ingest
-  time** — we preserve all three separately.
+  time** - we preserve all three separately.
 - **Standardisation** is needed where free-form source values vary
   (country, plan name, billing frequency).
 
 ## 5. What we deliberately do NOT model
 
 - Full REST resource semantics, webhooks, OAuth, rate limits, or multi-org
-  tenancy — these add no analytical value for the target questions.
-- Mixpanel's full profile-merging engine — we model identity *mapping*, not
+  tenancy - these add no analytical value for the target questions.
+- Mixpanel's full profile-merging engine - we model identity *mapping*, not
   resolution-as-a-service.

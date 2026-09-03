@@ -3,11 +3,11 @@
 Each task shells out to `docker compose run --rm` against the compose project
 via the mounted host docker socket. `run --rm` spawns a FRESH one-shot
 container per task, which is required because the pipeline services (dlt, dbt)
-have no long-running process — `docker compose exec` cannot target an exited
+have no long-running process - `docker compose exec` cannot target an exited
 container.
 
 This keeps ALL business/transformation logic in the services (api/dlt/dbt),
-not in Airflow — Airflow only orchestrates the sequence.
+not in Airflow - Airflow only orchestrates the sequence.
 
 The repo root is bind-mounted at /workspace inside the Airflow containers,
 so the compose file is reachable at /workspace/docker-compose.yml. Note the
@@ -60,7 +60,7 @@ def dbt_build_task(dag) -> BashOperator:
 
 
 def dbt_test_task(dag) -> BashOperator:
-    # Standalone test run (no rebuild) — used where a build already happened
+    # Standalone test run (no rebuild) - used where a build already happened
     # and the DAG only wants to re-assert data quality.
     return _bash(
         dag,

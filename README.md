@@ -1,6 +1,6 @@
 # Product Analytics Platform
 
-**An end-to-end analytics engineering solution** for a B2B SaaS business — from
+**An end-to-end analytics engineering solution** for a B2B SaaS business - from
 operational source systems to a trusted analytical model that answers the
 questions product and commercial teams actually ask.
 
@@ -10,7 +10,7 @@ questions product and commercial teams actually ask.
 >
 > | Surface | URL |
 > |---------|-----|
-> | **Evidence — BI report** | <http://2.24.207.46:3000/> |
+> | **Evidence - BI report** | <http://2.24.207.46:3000/> |
 > | **dbt docs** | <http://2.24.207.46:8083> |
 
 ---
@@ -20,7 +20,7 @@ questions product and commercial teams actually ask.
 | | |
 |---|---|
 | **What it is** | A complete analytics stack: source systems → ingestion → warehouse → transformation → semantic layer → BI |
-| **What it proves** | I can take a business question, trace it to source data, and deliver a *trusted* answer — handling real-world messiness (late/duplicate events, 3 identity namespaces, mutable CRM, schema drift) along the way |
+| **What it proves** | I can take a business question, trace it to source data, and deliver a *trusted* answer - handling real-world messiness (late/duplicate events, 3 identity namespaces, mutable CRM, schema drift) along the way |
 | **Stack** | Python · FastAPI · PostgreSQL · dlt · ClickHouse · dbt · Airflow · Evidence |
 | **Verification** | 30 dbt models + 100 data tests, **all passing** |
 | **One-liner** | `docker compose up` → a working analytics platform with a live BI dashboard |
@@ -29,8 +29,8 @@ questions product and commercial teams actually ask.
 
 ## The problem
 
-A B2B SaaS business runs on several operational systems — the product, the CRM,
-billing — each with its **own data, own identifiers, and own imperfections**.
+A B2B SaaS business runs on several operational systems - the product, the CRM,
+billing - each with its **own data, own identifiers, and own imperfections**.
 Answering *"where do customers drop during onboarding?"* or *"which accounts are
 about to churn?"* means joining behaviour across those systems into a single
 trusted model.
@@ -62,11 +62,11 @@ flowchart LR
     Sem --> BI["BI<br/>Evidence (curated report)"]
 ```
 
-The operational system and the analytics system are deliberately **separate** —
+The operational system and the analytics system are deliberately **separate** -
 just like a real company, where the analytics team doesn't own the product or
 the CRM, it consumes their data.
 
-The BI layer is an **Evidence** report — a curated, version-controlled
+The BI layer is an **Evidence** report - a curated, version-controlled
 narrative over the marts (this repo). It consumes the same mart tables and the
 same metric definitions as the rest of the platform.
 
@@ -75,11 +75,11 @@ same metric definitions as the rest of the platform.
 Every question is answered by a defined metric, traced to source data, and
 visible in the BI layer:
 
-1. **Activation** — where do users drop during onboarding, and how fast do they activate?
-2. **Adoption** — which features are adopted, and what do user journeys look like?
-3. **Conversion** — do activated users convert to paid, and how does behaviour relate to conversion?
-4. **Retention** — how does retention vary by cohort and by activation?
-5. **Churn & expansion** — what precedes churn, and which accounts expand?
+1. **Activation** - where do users drop during onboarding, and how fast do they activate?
+2. **Adoption** - which features are adopted, and what do user journeys look like?
+3. **Conversion** - do activated users convert to paid, and how does behaviour relate to conversion?
+4. **Retention** - how does retention vary by cohort and by activation?
+5. **Churn & expansion** - what precedes churn, and which accounts expand?
 
 ## Results
 
@@ -93,7 +93,7 @@ visible in the BI layer:
 | Feature adoption | tasks ~94%, integrations ~65%, comments ~65% |
 | Latest MRR | ~$55.8k across paying accounts |
 
-*Numbers are computed live from the marts — the narrative in the BI report
+*Numbers are computed live from the marts - the narrative in the BI report
 updates with the data.*
 
 ---
@@ -114,7 +114,7 @@ Real operational data is messy. This project reproduces those problems
 | Schema evolution | source schema changes | coalescing in staging |
 
 That's the core discipline: **metrics are defined once, traceable to source,
-and tested** — not reverse-engineered from a dashboard.
+and tested** - not reverse-engineered from a dashboard.
 
 ## The mindset behind it
 
@@ -135,7 +135,7 @@ system where each layer has a single responsibility and a clear owner.
 
 To make the platform exercise the same problems a real analytics team faces,
 the source systems were modelled after **Mixpanel (product events), HubSpot
-(CRM), and Stripe (billing)** — their identifiers, update semantics, and
+(CRM), and Stripe (billing)** - their identifiers, update semantics, and
 failure modes were researched first, then reproduced faithfully. This is an
 implementation detail, not the subject of the project: the subject is the
 analytics engineering that turns that data into trusted answers. See
@@ -157,7 +157,7 @@ analytics engineering that turns that data into trusted answers. See
 
 ## Quick start
 
-Everything runs from Docker — no local setup beyond Docker itself:
+Everything runs from Docker - no local setup beyond Docker itself:
 
 ```bash
 # Build + start the full stack. The first run bootstraps the pipeline

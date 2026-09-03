@@ -1,6 +1,6 @@
 name: saas-analytics
 
-# SaaS Product Analytics Platform — full stack.
+# SaaS Product Analytics Platform - full stack.
 # Exposed to the host only where intended: dbt docs (8083) and Evidence (3000).
 # Everything else is internal (reachable by service name, no host port).
 # The first `up` self-bootstraps the pipeline; Airflow keeps it fresh daily.
@@ -102,7 +102,7 @@ services:
     restart: unless-stopped
     command: ["docs", "serve", "--port", "8080", "--host", "0.0.0.0"]
 
-  # --- Ingestion (dlt) — run on demand via compose run -------------------
+  # --- Ingestion (dlt) - run on demand via compose run -------------------
   dlt:
     build:
       context: ./docker/dlt
@@ -141,7 +141,7 @@ services:
         set -euo pipefail
         MARKER=/bootstrap-state/.complete
         if [ -f "$$MARKER" ]; then
-          echo "bootstrap: already complete ($$MARKER present) — nothing to do."
+          echo "bootstrap: already complete ($$MARKER present) - nothing to do."
           exit 0
         fi
         echo "bootstrap: running full pipeline initialisation..."
@@ -176,7 +176,7 @@ services:
         condition: service_healthy
     restart: "no"
 
-  # --- Evidence — curated BI report over the dbt marts (host :3000) ------
+  # --- Evidence - curated BI report over the dbt marts (host :3000) ------
   evidence:
     build:
       context: ./evidence
@@ -204,7 +204,7 @@ services:
       bootstrap:
         condition: service_completed_successfully
 
-  # --- Airflow — daily orchestration (not exposed to the host) -----------
+  # --- Airflow - daily orchestration (not exposed to the host) -----------
   airflow-postgres:
     image: postgres:16
     restart: unless-stopped

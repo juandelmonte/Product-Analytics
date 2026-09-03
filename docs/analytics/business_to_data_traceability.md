@@ -45,7 +45,7 @@ chain honest:
 
 1. Every metric mart can be joined back to a staging model, and every staging
    model to a bronze table (lineage is visible in dbt docs).
-2. No mart reads bronze directly — the staging → core → marts layering is the
+2. No mart reads bronze directly - the staging → core → marts layering is the
    enforced path.
 3. Late-arriving, duplicate, mutable, and future-effective records are handled
    at staging so measures always attribute to the correct `event_at` /
@@ -54,6 +54,6 @@ chain honest:
 ## Deliberately excluded
 
 Metrics without a supported source are not implemented. Current exclusions:
-- **Time-to-value per feature** — requires per-feature first-use timestamps the
+- **Time-to-value per feature** - requires per-feature first-use timestamps the
   simulation does not currently model distinctly from adoption; noted for a
   future iteration if the event catalogue is extended.

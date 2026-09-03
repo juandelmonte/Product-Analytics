@@ -11,7 +11,7 @@ from .db import engine
 from .routers import billing, crm, product_events
 
 app = FastAPI(
-    title="SaaS Product Analytics — Source APIs",
+    title="SaaS Product Analytics - Source APIs",
     description="Mixpanel/HubSpot/Stripe-like source APIs over the simulated operational database.",
     version="0.1.0",
 )

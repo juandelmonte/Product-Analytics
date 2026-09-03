@@ -7,7 +7,7 @@ sidebar_position: 3
 
 One fact, sliced many ways. Every chart below is a **star-schema join**: a fact
 (`fct_*`) joined to the conformed `dim_accounts` by `account_id`. This is the
-reason the dimensions exist — the same activation/conversion/MRR facts, cut by
+reason the dimensions exist - the same activation/conversion/MRR facts, cut by
 plan, country, size, and industry.
 
 ## Activation by dimension

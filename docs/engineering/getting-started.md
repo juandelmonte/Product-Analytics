@@ -60,7 +60,7 @@ A completion marker on the `bootstrap-state` volume makes later `up`s a no-op.
 > pipe/named-pipe message, start Docker Desktop first.
 >
 > **Windows dev note**: the `bootstrap` compose service and the Airflow DAGs
-> orchestrate via the mounted docker socket with `docker compose run` — this
+> orchestrate via the mounted docker socket with `docker compose run` - this
 > resolves bind mounts correctly on Linux (the VPS deploy target), but on
 > Docker Desktop (Windows) nested `run` cannot re-resolve `./api`-style mounts
 > against the host path. On Windows, run the same chain from the host shell
@@ -128,7 +128,7 @@ Run any of these from the repo root (PowerShell).
 
 ### Shortcuts (recommended)
 
-Shortcuts are **project-scoped** — they live in `scripts/activate.ps1` and do
+Shortcuts are **project-scoped** - they live in `scripts/activate.ps1` and do
 not touch your global PowerShell profile.
 
 - **In VS Code:** new integrated terminals load them automatically (see
@@ -144,7 +144,7 @@ dbt docs generate    # (re)build the docs catalog into target/
 
 dbt-docs             # regenerate docs, then serve in the FOREGROUND at
                      # http://localhost:8083 (Ctrl+C stops it).
-                     # NOTE: dbt prints "localhost:8080" — that's the container
+                     # NOTE: dbt prints "localhost:8080" - that's the container
                      # port; on the host browse to 8083 (compose maps 8083->8080).
 
 ch                   # interactive ClickHouse client on the analytics database
@@ -227,8 +227,8 @@ docker compose exec clickhouse clickhouse-client --database analytics   # SQL cl
 
 - **Version pinning** lives in `.env`. `dbt-core` is pinned to the 1.10 line
   because `dbt-clickhouse` supports up to dbt-core 1.10.
-- **ClickHouse version requirement** — the adapter requires ClickHouse 25.3+.
+- **ClickHouse version requirement** - the adapter requires ClickHouse 25.3+.
 - **ClickHouse data** persists in the `clickhouse-data` Docker volume; reset
   with `docker compose down -v`.
-- **Determinism** — the simulation uses the `SEED` variable from `.env`; the
+- **Determinism** - the simulation uses the `SEED` variable from `.env`; the
   same seed reproduces the identical 24-month history.

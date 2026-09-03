@@ -37,7 +37,7 @@ function chq($query) {
 }
 
 # dbt-docs -> regenerate docs and serve them at http://localhost:8083
-# (NOTE: the `dbt docs serve` output says "localhost:8080" — that is the
+# (NOTE: the `dbt docs serve` output says "localhost:8080" - that is the
 # CONTAINER port. The compose `dbt` service maps host 8083 -> container 8080,
 # and `--service-ports` publishes that mapping, so browse to 8083 on the host.)
 function dbt-docs {

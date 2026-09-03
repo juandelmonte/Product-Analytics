@@ -72,7 +72,7 @@ flowchart LR
 | Staging | ClickHouse `staging` | `dbt` | Type casting, standardisation, dedup, SCD-current |
 | Core | ClickHouse `core` | `dbt` | Reusable business logic (identity, activation, subscriptions) |
 | Marts | ClickHouse `marts` | `dbt` | Business-facing facts/dims/aggregates with documented grains |
-| Orchestration | Airflow | `airflow` | Ordering, schedule, retries only — no business logic |
+| Orchestration | Airflow | `airflow` | Ordering, schedule, retries only - no business logic |
 
 ## Key design decisions
 
@@ -83,7 +83,7 @@ See `decisions/architecture-decisions.md` for the full ADR set. Summary:
 2. **Three timestamps** never conflated: `event_at` (business), `effective_at`/
    `recorded_at` (state change), `source_updated_at` (ingestion cursor).
 3. **Append-only + merge** ingestion: events append (dedup in dbt), mutable
-   records merge (upsert by source PK) — idempotent reruns.
+   records merge (upsert by source PK) - idempotent reruns.
 4. **Deterministic simulation**: per-day seed `f(SEED, day_index)`; history is
    reproducible and append-only.
 5. **Medallion in ClickHouse**: bronze (dlt) → staging → core → marts (dbt).
@@ -93,9 +93,9 @@ See `decisions/architecture-decisions.md` for the full ADR set. Summary:
 
 | Service | Port | Purpose |
 |---------|------|---------|
-| postgres | — (internal) | Operational source-of-truth |
-| api | — (internal) | Source APIs + simulation CLI |
-| clickhouse | — (internal) | Analytical warehouse |
+| postgres | - (internal) | Operational source-of-truth |
+| api | - (internal) | Source APIs + simulation CLI |
+| clickhouse | - (internal) | Analytical warehouse |
 | dbt | 8083 (docs serve) | Transformation (run on demand) |
-| dlt | — (internal) | Ingestion (run on demand) |
-| airflow | — (internal) | Orchestration (runs by default; webserver not exposed) |
+| dlt | - (internal) | Ingestion (run on demand) |
+| airflow | - (internal) | Orchestration (runs by default; webserver not exposed) |

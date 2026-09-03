@@ -6,8 +6,8 @@ domain. The core principle:
 > **Never move to the next layer until you understand what the previous layer
 > requires.** Business first; technology last.
 
-Each step below names the artifact it produces, and — because this repository is
-the worked example of the methodology — links to the concrete file that
+Each step below names the artifact it produces, and - because this repository is
+the worked example of the methodology - links to the concrete file that
 instantiates it here.
 
 ```text
@@ -70,7 +70,7 @@ Establish:
 - What are the important business processes?
 - Who will consume the analytics, and what decisions do they make?
 
-**Output:** `business_context.md` — a one-page description of the business and
+**Output:** `business_context.md` - a one-page description of the business and
 its operating model.
 
 **In this repo:** [`../business/business_case.md`](../business/business_case.md).
@@ -85,7 +85,7 @@ Identify: actors, entities, events, states, processes, lifecycle transitions.
 Customer acquired → onboarded → uses product → pays → renews/churns
 ```
 
-**Output:** `business_processes.md` — process diagrams. This is the *model of
+**Output:** `business_processes.md` - process diagrams. This is the *model of
 reality*.
 
 **In this repo:** [`../business/business_case.md`](../business/business_case.md)
@@ -159,7 +159,7 @@ Move from business architecture to data architecture:
 - What crosses a system boundary?
 - What interface exposes it?
 
-**Output:** `system_architecture.md` — ownership, interfaces, identifiers,
+**Output:** `system_architecture.md` - ownership, interfaces, identifiers,
 contracts, update semantics, failure modes.
 
 **In this repo:** [`architecture.md`](architecture.md)
@@ -188,9 +188,9 @@ dimensions, snapshots/history, identity resolution, SCDs, event and aggregate
 models.
 
 The key question: **what representation makes the business questions easy to
-answer?** — not "what tables can I create?"
+answer?** - not "what tables can I create?"
 
-**Output:** `data_model.md` — ERD + model catalogue.
+**Output:** `data_model.md` - ERD + model catalogue.
 
 **In this repo:** [`../analytics/semantic_model.md`](../analytics/semantic_model.md)
 + [`warehouse_design.md`](warehouse_design.md).
@@ -241,14 +241,14 @@ then Subscription → MRR).
 
 Three levels:
 
-- **Technical** — tests, schemas, relationships, freshness, uniqueness.
-- **Data** — duplicates, late events, missing relationships, invalid states.
-- **Business** — does the metric make sense? Manually inspect a few entities
+- **Technical** - tests, schemas, relationships, freshness, uniqueness.
+- **Data** - duplicates, late events, missing relationships, invalid states.
+- **Business** - does the metric make sense? Manually inspect a few entities
   and verify the calculation.
 
 ## 14. Consumption, then iterate
 
-Build the BI layer last — it is a *view of the analytical model*, not the
+Build the BI layer last - it is a *view of the analytical model*, not the
 thing driving the model. The methodology is iterative: discoveries push you
 back up (e.g. "this metric sounds useful, but the source doesn't provide the
 data"). That is good analytics engineering, not failure.

@@ -8,7 +8,7 @@ config-version: 2
 # This setting configures which "profile" dbt uses for this project.
 profile: "analytics"
 
-# Paths — defaults are used if omitted.
+# Paths - defaults are used if omitted.
 model-paths: ["models"]
 analysis-paths: ["analyses"]
 test-paths: ["tests"]

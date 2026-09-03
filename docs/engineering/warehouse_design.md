@@ -18,7 +18,7 @@ builds staging → core → marts.
 The consumption layer is a **star schema** (Kimball-style), not a set of wide,
 self-contained facts:
 
-- **Dimensions** (`dim_*`) hold descriptive attributes and are conformed — one
+- **Dimensions** (`dim_*`) hold descriptive attributes and are conformed - one
   definition, reused by every fact that references them. Current dims:
   `dim_accounts` (account + CRM attributes + current plan), `dim_plans`
   (billing catalog), `dim_features` (feature labels), `dim_dates` (calendar).
@@ -28,7 +28,7 @@ self-contained facts:
   `plan_code`, `feature_code`, `day_date`).
 
 Why this, on ClickHouse? Columnar stores make small dimension joins cheap, so a
-normalised star is fine; what we avoid is the *other* extreme — copying every
+normalised star is fine; what we avoid is the *other* extreme - copying every
 dimension column into every fact, which duplicates data and drifts definitions.
 Dimensions are defined once, conformed, and joined. If a specific query ever
 needs a hot-path denormalisation, that's a measured physical-layer optimisation,
@@ -51,10 +51,10 @@ descriptive attributes (if any) already live on the fact rows.
 
 Three timestamps are preserved end-to-end and never conflated:
 
-- `event_at` — when the business thing happened (metric attribution).
-- `effective_at` / `recorded_at` — when a state change is true vs when it was
+- `event_at` - when the business thing happened (metric attribution).
+- `effective_at` / `recorded_at` - when a state change is true vs when it was
   recorded (future-effective logic).
-- `source_updated_at` / `_dlt_ingested_at` — when the row was written / loaded
+- `source_updated_at` / `_dlt_ingested_at` - when the row was written / loaded
   (ingestion diagnostics and watermarks).
 
 ## Source() contract with dbt-clickhouse

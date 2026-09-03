@@ -76,7 +76,7 @@ source data**. No metric exists without a business purpose (mapped in
 - **Grain**: one row per calendar day.
 - **Time semantics**: event time; DAU/WAU ratio uses a rolling window.
 - **Dimensions**: plan, role, country.
-- **Required source data**: any qualifying product event (activity events only —
+- **Required source data**: any qualifying product event (activity events only -
   see event catalogue).
 
 ## 7. Feature Adoption Rate
@@ -106,7 +106,7 @@ source data**. No metric exists without a business purpose (mapped in
   activation mart.
 - **Note**: conversion is **not** conditional on activation. Accounts can start
   on a free or trial plan and upgrade to paid even if they never fully
-  activated — activation merely makes conversion far more likely.
+  activated - activation merely makes conversion far more likely.
 
 ## 8b. Engagement segment
 

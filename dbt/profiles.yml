@@ -4,7 +4,7 @@
 # HTTP. Connection details are injected via environment variables set in
 # docker-compose.yml, so this file works unchanged from any machine.
 #
-# `schema` maps to a ClickHouse database — the adapter uses `schema.table`
+# `schema` maps to a ClickHouse database - the adapter uses `schema.table`
 # (ClickHouse has no three-part database.schema.table hierarchy).
 # ---------------------------------------------------------------------------
 analytics:

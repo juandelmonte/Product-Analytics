@@ -5,24 +5,24 @@ between operational state (PostgreSQL) and analytical state (ClickHouse).
 
 ## Principles
 
-1. **Incremental, not truncate-reload** — dlt cursors on `source_updated_at`
+1. **Incremental, not truncate-reload** - dlt cursors on `source_updated_at`
    (never `event_at`), so late-arriving and re-delivered records are not missed.
-2. **Idempotent** — re-running a load does not duplicate data:
+2. **Idempotent** - re-running a load does not duplicate data:
    - mutable collections (CRM, billing) use `merge` with a source primary key
      (upsert by key).
    - the event stream uses `append` + a persisted watermark; duplicates are
      *deliberately* preserved in bronze and deduped in dbt (DQ scenario).
-3. **Preserve source metadata** — every row keeps `source_updated_at`,
+3. **Preserve source metadata** - every row keeps `source_updated_at`,
    `event_at` / `effective_at` / `recorded_at`, and dlt adds `_dlt_*` load
    metadata. Analytics never mixes these timestamps.
-4. **Schema evolution** — dlt's schema-evolution keeps unknown columns; the
+4. **Schema evolution** - dlt's schema-evolution keeps unknown columns; the
    `plan` → `plan + plan_code` change is handled in dbt staging.
 
 ## Pipelines
 
 | Pipeline | Endpoint(s) | Write disposition | Primary key (merge) |
 |----------|-------------|-------------------|---------------------|
-| `product_events` | `/api/product-events` | append | — (dedup in dbt) |
+| `product_events` | `/api/product-events` | append | - (dedup in dbt) |
 | `crm` | contacts, companies, deals | merge | contact_id / company_id / deal_id |
 | `billing` | customers, prices, subscriptions, invoices | merge | customer_id / price_id / subscription_id / invoice_id |
 

@@ -8,8 +8,8 @@ adoption measurement.
 
 | Event name | Produced by | Type | Feature |
 |------------|-------------|------|---------|
-| `user_signup` | Signup form submitted | lifecycle | — |
-| `account_created` | Account provisioned | lifecycle | — |
+| `user_signup` | Signup form submitted | lifecycle | - |
+| `account_created` | Account provisioned | lifecycle | - |
 | `workspace_created` | First user names a workspace | activation | workspace |
 | `project_created` | User creates a project | activation | projects |
 | `membership_invited` | Owner invites a teammate | activation | collaboration |

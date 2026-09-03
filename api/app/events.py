@@ -3,7 +3,7 @@
 This is the *instrumentation* layer. Business actions (signup, create project,
 complete task, ...) call these functions, which write the corresponding
 product_events rows. Events are never created disconnected from a business
-action — this module is the only place product_events are inserted.
+action - this module is the only place product_events are inserted.
 """
 from __future__ import annotations
 

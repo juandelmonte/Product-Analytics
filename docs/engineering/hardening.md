@@ -40,7 +40,7 @@ docker compose run --rm dbt build --full-refresh
 
 ## Bugs found & fixed during hardening
 
-1. **`ended_at < start_date`** — expansion/churn could set a superseded row's
+1. **`ended_at < start_date`** - expansion/churn could set a superseded row's
    `ended_at` to a date before its `start_date` when future-effective dates
    overlapped. Fixed by clamping `ended_at = max(day, start_date)` in
    `_churn`, `_expand`, and `_apply_billing_change`. Verified by

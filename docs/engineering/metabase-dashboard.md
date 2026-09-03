@@ -1,4 +1,4 @@
-# Metabase Dashboard — Build Guide
+# Metabase Dashboard - Build Guide
 
 This guide describes the self-serve Metabase dashboard that **you** will build
 by hand (Metabase configuration is click-driven and lives in its own database,
@@ -100,7 +100,7 @@ Three dashboards mirroring the three persona groups:
 - **Churn overview** (`churn_overview.sql`).
 - **Expanding accounts** (`expansion_accounts.sql`).
 
-Every card's SQL is available, ready to paste, in `evidence/queries/*.sql` —
+Every card's SQL is available, ready to paste, in `evidence/queries/*.sql` -
 this is deliberate: the SQL is **written once, reused in two BI surfaces**.
 
 ---
@@ -111,7 +111,7 @@ this is deliberate: the SQL is **written once, reused in two BI surfaces**.
   source of truth**. When adding a Metabase card, copy the metric's formula and
   grain verbatim into the card's description.
 - If a metric definition changes, update the dictionary first, then the Evidence
-  SQL, then the Metabase card — in that order.
+  SQL, then the Metabase card - in that order.
 - Do **not** define metrics inline in Metabase that aren't in the dictionary.
 
 ---

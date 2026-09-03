@@ -23,22 +23,22 @@ product events across 24 months.
 
 Two patterns stand out:
 
-1. **Onboarding is a progressive leak** — the steepest step is *workspace
+1. **Onboarding is a progressive leak** - the steepest step is *workspace
    created* → *first project created*, with smaller drop-offs at every later
    step.
-2. **Activation strongly predicts monetisation** — activated accounts convert
+2. **Activation strongly predicts monetisation** - activated accounts convert
    at ~5× the rate of non-activated accounts, but conversion is **not** gated
    on it (see §3).
 
 ---
 
-## 1. Activation — *where do users drop, and how fast do they activate?*
+## 1. Activation - *where do users drop, and how fast do they activate?*
 
 ### A1. Where do users drop during onboarding?
 
 The onboarding funnel, in journey order (definition:
 `docs/analytics/metric_dictionary.md` §5). The steepest drop-off is at
-**workspace → project**, but every step loses a small share of accounts — the
+**workspace → project**, but every step loses a small share of accounts - the
 funnel is a *gradual* slope, not a single cliff.
 
 {% funnel_chart
@@ -65,7 +65,7 @@ activation moment is the last of the four. (Definition locked in
 ### A3. What is the activation rate?
 
 The activation rate is {% value data="/queries/kpis" value="activation_rate" fmt="pct1" /%}
-— {% value data="/queries/kpis" value="activated_accounts" fmt="num0" /%} of
+- {% value data="/queries/kpis" value="activated_accounts" fmt="num0" /%} of
 {% value data="/queries/kpis" value="total_accounts" fmt="num0" /%} accounts.
 
 {% line_chart
@@ -97,7 +97,7 @@ Most accounts that activate do so within the first couple of days; the P90 at
 
 ---
 
-## 2. Adoption — *which features are used, and what do journeys look like?*
+## 2. Adoption - *which features are used, and what do journeys look like?*
 
 ### D1. Which features are adopted?
 
@@ -117,8 +117,8 @@ is why their *rate* looks low.
 ### D2. How does usage vary across users/accounts?
 
 Daily active users average {% value data="/queries/dau_wau" value="avg(dau)" fmt="num0" /%}
-per day. **DAU/WAU stickiness** — the share of the weekly audience active on a
-given day — averages {% value data="/queries/dau_wau" value="avg(stickiness)" fmt="pct" /%}.
+per day. **DAU/WAU stickiness** - the share of the weekly audience active on a
+given day - averages {% value data="/queries/dau_wau" value="avg(stickiness)" fmt="pct" /%}.
 
 Two charts, because the two metrics live on different scales:
 
@@ -148,7 +148,7 @@ smaller losses at every later step.
 
 ---
 
-## 3. Conversion — *who converts to paid, and why?*
+## 3. Conversion - *who converts to paid, and why?*
 
 ### C1. Do activated users convert to paid?
 
@@ -161,7 +161,7 @@ smaller losses at every later step.
 /%}
 
 Accounts start on a **free or trial** plan and a share later upgrades to paid
-(see `docs/analytics/metric_dictionary.md` §8 — conversion is **not**
+(see `docs/analytics/metric_dictionary.md` §8 - conversion is **not**
 conditional on activation). Activation is a **strong predictor** of conversion
 (~5× more likely), but not a hard gate: a small but real share of accounts
 upgrades even without fully activating.
@@ -184,7 +184,7 @@ threshold.
 
 ---
 
-## 4. Retention — *how does retention vary by cohort and activation?*
+## 4. Retention - *how does retention vary by cohort and activation?*
 
 ### R1. How does retention vary by cohort?
 
@@ -211,7 +211,7 @@ where cohort_week >= (
 chart shows the last six cohorts so the curves stay readable.
 
 Week 0 is, by construction, 100%. The curves show the classic SaaS decay: an
-initial drop (onboarding churn + dormancy), then a flattening — accounts that
+initial drop (onboarding churn + dormancy), then a flattening - accounts that
 survive the first weeks tend to stick around. Recent cohorts have shorter
 curves because they haven't reached later offsets yet (the mart right-censors
 them rather than dropping to zero).
@@ -225,13 +225,13 @@ them rather than dropping to zero).
     title="Average active weeks by activation status"
 /%}
 
-Activated accounts stay active materially longer than non-activated accounts —
+Activated accounts stay active materially longer than non-activated accounts -
 activation is a leading indicator of ongoing engagement, not just a one-time
 milestone.
 
 ---
 
-## 5. Churn & Expansion — *what precedes churn, and who expands?*
+## 5. Churn & Expansion - *what precedes churn, and who expands?*
 
 ### E1. What product behaviour precedes churn?
 
@@ -253,7 +253,7 @@ milestone.
 Churned accounts had **higher** lifetime usage than retained ones. This is a
 **tenure artefact**, not a contradiction: churned accounts were older and
 accumulated activity *before* leaving. The actionable churn signal is therefore
-**not** raw volume — it is a *decline* in usage immediately preceding
+**not** raw volume - it is a *decline* in usage immediately preceding
 cancellation (a trend-based signal, not a static level).
 
 ### E2. Which accounts expand?
@@ -287,7 +287,7 @@ in the latest month, with expansion MRR contributing in recent months.
 
 **Paid base** counts accounts on a `pro` or `enterprise` plan. The chart shows
 three curves: cumulative accounts that **ever** paid (`cum_converted`),
-cumulative paid accounts that **churned** (`cum_churned`), and the difference —
+cumulative paid accounts that **churned** (`cum_churned`), and the difference -
 accounts **currently paying** (`paid_accounts`). This is a *billing* view of
 "active accounts" (who is paying right now), distinct from the usage-based DAU
 in §D2.

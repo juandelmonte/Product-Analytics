@@ -12,7 +12,7 @@ Only two host ports are exposed (the only ones to open in the firewall):
 | **dbt docs** | **8083** | 8080 | renumbered from 8080 (taken on the reference VPS) |
 | **Evidence** | **3000** | 3000 | unchanged (free on the reference VPS) |
 
-Everything else (postgres, api, clickhouse, dlt, airflow) has **no host port** —
+Everything else (postgres, api, clickhouse, dlt, airflow) has **no host port** -
 it is reachable only inside the Docker network by container name. This removes
 most port-collision risk on a shared VPS.
 
@@ -54,7 +54,7 @@ create ClickHouse DBs (bronze/staging/core/marts)
 ```
 
 It then writes a completion marker to the `bootstrap-state` volume, so a later
-`docker compose up` (reboot, redeploy) is a **no-op** — it does not wipe or
+`docker compose up` (reboot, redeploy) is a **no-op** - it does not wipe or
 regenerate data. Airflow's scheduler + webserver, Evidence, **and the dbt docs
 server** all **wait** for the bootstrap to finish
 (`depends_on: service_completed_successfully`) before they start, so nothing
@@ -99,7 +99,7 @@ Airflow's `daily_pipeline` DAG runs on a daily schedule:
 Each task shells out to `docker compose run --rm` against the mounted docker
 socket (the Airflow image bundles the Docker CLI + compose plugin). The
 `historical_initialization` DAG (same chain but a full 720-day regen) is
-available to trigger manually if you ever want to rebuild from scratch —
+available to trigger manually if you ever want to rebuild from scratch -
 normally you only need the scheduler's daily run.
 
 > The daily `dbt build` refreshes the marts **and** the shared `target/` on the
@@ -128,10 +128,10 @@ docker compose up --build -d
 | api | source APIs + simulation | no |
 | clickhouse | warehouse (bronze/staging/core/marts) | no |
 | dlt | ingestion | no |
-| dbt | transforms + **persistent docs server (:8083)** | yes — docs |
+| dbt | transforms + **persistent docs server (:8083)** | yes - docs |
 | airflow | daily orchestration (webserver + scheduler) | no |
 | bootstrap | one-time initialisation (exits after success) | no |
-| evidence | curated report | yes — :3000 |
+| evidence | curated report | yes - :3000 |
 
 All persistent services use `restart: unless-stopped`, so the stack survives a
 VPS reboot and comes back up (bootstrap is a no-op once the marker exists).
@@ -150,5 +150,5 @@ ssh -L 8081:localhost:8081 juan@<vps-ip>
 Evidence runs with `EVIDENCE_AUTH_DISABLED: "true"` by default (matching local
 dev). Before exposing it to the internet for real, set
 `EVIDENCE_BASIC_USER` / `EVIDENCE_BASIC_PASSWORD` and flip
-`EVIDENCE_AUTH_DISABLED` to `"false"` — or front Evidence with an authenticating
+`EVIDENCE_AUTH_DISABLED` to `"false"` - or front Evidence with an authenticating
 reverse proxy.

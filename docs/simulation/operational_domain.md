@@ -1,7 +1,7 @@
 # Operational Domain
 
 The operational model is the source-of-truth for the simulated business. It
-contains **only** the entities needed to generate the analytical data — nothing
+contains **only** the entities needed to generate the analytical data - nothing
 extra. This is the schema behind the FastAPI source APIs and the target of the
 simulation module.
 
@@ -26,18 +26,18 @@ simulation module.
 
 ## Business rules
 
-1. **Signup** — an account is created together with its first user (role
+1. **Signup** - an account is created together with its first user (role
    `owner`), a CRM contact + company, and (for trials) a billing customer.
-2. **Membership** — a user belongs to an account via a membership row; the
+2. **Membership** - a user belongs to an account via a membership row; the
    `owner` role is the only one able to invite teammates.
-3. **Activation** — an account is activated when it has, within 7 days of
+3. **Activation** - an account is activated when it has, within 7 days of
    signup: a workspace, a project, a second membership, and a completed task
    (see `../business/business_case.md`).
-4. **Plan lifecycle** — a subscription is `trialing` → `active` → `canceled`
+4. **Plan lifecycle** - a subscription is `trialing` → `active` → `canceled`
    (or `past_due`). Plan/seat changes append a new subscription period with a
    future `effective_at`; they never rewrite history.
-5. **Task lifecycle** — `open` → `done`; `completed_at` is set when done.
-6. **CRM lifecycle** — a company moves `subscriber → lead → mql → sql →
+5. **Task lifecycle** - `open` → `done`; `completed_at` is set when done.
+6. **CRM lifecycle** - a company moves `subscriber → lead → mql → sql →
    customer → churned`; stage changes mutate the row (SCD2 handled in dbt).
 
 ## Separation of concerns

@@ -7,7 +7,7 @@ workspaces, plan deliverables as projects, and execute them as tasks.
 
 This is the smallest product that still supports every analytical question the
 platform must answer: activation, adoption, journeys, conversion, retention,
-churn, and MRR expansion — all of which map naturally onto the core loop
+churn, and MRR expansion - all of which map naturally onto the core loop
 *workspace → project → task* and a seat-based subscription.
 
 ## The operational model (summary)
@@ -23,25 +23,25 @@ churn, and MRR expansion — all of which map naturally onto the core loop
 | `plan`          | A product tier (free / trial / pro / enterprise)                |
 | `subscription`  | An account's active plan and its seat count                     |
 | product events  | The behavioural stream (signups, invites, project/task actions) |
-| CRM records     | contacts, companies, deals — the sales/renewal view             |
-| billing records | customers, prices, subscriptions, invoices — the money view     |
+| CRM records     | contacts, companies, deals - the sales/renewal view             |
+| billing records | customers, prices, subscriptions, invoices - the money view     |
 
 ## Lifecycle
 
-1. **Acquisition → Signup** — a visitor creates an account (company) and the
+1. **Acquisition → Signup** - a visitor creates an account (company) and the
    first user. This produces an `account_created` + `user_signup` event, a CRM
    contact + company, and (for trials) a billing customer.
-2. **Onboarding → Activation** — the account configures a workspace, creates a
+2. **Onboarding → Activation** - the account configures a workspace, creates a
    project, invites a teammate, and completes the first task. **Activation is
    defined below**; failing onboarding means the account stalls before reaching
    it.
-3. **Product adoption** — teams use the features: creating tasks, assigning,
+3. **Product adoption** - teams use the features: creating tasks, assigning,
    commenting, completing, integrating.
-4. **Paid conversion** — a trial/free account picks a paid plan (via a CRM deal
+4. **Paid conversion** - a trial/free account picks a paid plan (via a CRM deal
    → billing subscription).
-5. **Retention / churn** — active usage over time; churn = subscription
+5. **Retention / churn** - active usage over time; churn = subscription
    cancellation (voluntary or lapse).
-6. **Expansion / MRR** — adding seats or upgrading plans increases MRR.
+6. **Expansion / MRR** - adding seats or upgrading plans increases MRR.
 
 ## Activation definition (locked)
 
@@ -58,10 +58,10 @@ moment, in days.
 
 ## Personas
 
-- **Product team** — asks activation/adoption/retention questions to steer the
+- **Product team** - asks activation/adoption/retention questions to steer the
   onboarding and feature roadmap.
-- **Growth / marketing** — asks acquisition and funnel questions.
-- **Sales / CS** — asks conversion, churn, and expansion questions.
+- **Growth / marketing** - asks acquisition and funnel questions.
+- **Sales / CS** - asks conversion, churn, and expansion questions.
 
 ## Why this needs an analytics platform
 
